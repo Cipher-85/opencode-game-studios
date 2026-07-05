@@ -61,7 +61,7 @@ if [ -n "${target_arg:-}" ] && [ "$install_mode" = "opencode_clean" ]; then
       printf 'The installer will deploy alongside existing content.\n\n' >&2
       if [ "$dry_run" -eq 0 ]; then
         printf 'Continue? [y/N] ' >&2
-        read -r response </dev/tty || response="n"
+        read -r response || response="n"
         case "$response" in
           y|Y|yes|YES) ;;
           *) printf 'Aborted.\n'; exit 1 ;;

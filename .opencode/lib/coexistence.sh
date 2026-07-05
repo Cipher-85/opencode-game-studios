@@ -65,6 +65,7 @@ ccgs_has_codex_ccgs() {
 ccgs_has_opencode_prior() {
   [ -f "${target_root:-$PWD}/.opencode/install-state.json" ] && return 0
   [ -f "${target_root:-$PWD}/.opencode/VERSION" ] && return 0
+  [ -f "${target_root:-$PWD}/.opencode/agents/creative-director.md" ] && return 0
   return 1
 }
 
