@@ -1,5 +1,5 @@
 #!/bin/bash
-# Claude Code PostToolUse hook: Advises running skill-test after skill file changes
+# OpenCode PostToolUse hook: Advises running skill-test after skill file changes
 # Fires when any file inside .opencode/skills/ is written or edited.
 #
 # Exit behavior:

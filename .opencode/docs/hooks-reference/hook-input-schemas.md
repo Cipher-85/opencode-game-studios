@@ -1,6 +1,6 @@
 # Hook Input/Output Schemas
 
-This documents the JSON payloads each Claude Code hook receives on stdin for every event type.
+This documents the JSON payloads each OpenCode hook receives on stdin for every event type.
 
 ## PreToolUse
 
@@ -100,7 +100,7 @@ Fired when a subagent is spawned via the Task tool.
 
 ## SessionStart
 
-Fired when a Claude Code session begins. **No stdin input** — the hook just runs and its stdout is shown to Claude as context.
+Fired when a OpenCode session begins. **No stdin input** — the hook just runs and its stdout is shown to Claude as context.
 
 ## PreCompact
 
@@ -108,7 +108,7 @@ Fired before context window compression. **No stdin input** — the hook runs to
 
 ## Stop
 
-Fired when the Claude Code session ends. **No stdin input** — the hook runs for cleanup and logging.
+Fired when the OpenCode session ends. **No stdin input** — the hook runs for cleanup and logging.
 
 ## Exit Code Reference
 

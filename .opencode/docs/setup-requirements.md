@@ -9,7 +9,7 @@ you'll lose validation features.
 | Tool | Purpose | Install |
 | ---- | ---- | ---- |
 | **Git** | Version control, branch management | [git-scm.com](https://git-scm.com/) |
-| **Claude Code** | AI agent CLI | `npm install -g @anthropic-ai/claude-code` |
+| **OpenCode** | AI agent CLI | `npm install -g opencode` |
 
 ## Recommended
 
@@ -47,7 +47,7 @@ sudo pacman -S jq       # Arch
   used by all hooks in `settings.json`
 - Ensure Git Bash is on your PATH (default if installed via the Git installer)
 - Hooks use `bash .opencode/hooks/[name].sh` — this works on Windows because
-  Claude Code invokes commands through a shell that can find `bash.exe`
+  OpenCode invokes commands through a shell that can find `bash.exe`
 
 ### macOS / Linux
 - Bash is available natively
@@ -74,7 +74,7 @@ python3 --version      # Should show python version (optional)
 
 ## Recommended IDE
 
-Claude Code works with any editor, but the template is optimized for:
-- **VS Code** with the Claude Code extension
-- **Cursor** (Claude Code compatible)
-- Terminal-based Claude Code CLI
+OpenCode works with any editor, but the template is optimized for:
+- **VS Code** with the OpenCode extension
+- **Cursor** (OpenCode compatible)
+- Terminal-based OpenCode CLI

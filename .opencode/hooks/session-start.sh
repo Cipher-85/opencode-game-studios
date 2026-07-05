@@ -1,10 +1,10 @@
 #!/bin/bash
-# Claude Code SessionStart hook: Load project context at session start
+# OpenCode SessionStart hook: Load project context at session start
 # Outputs context information that Claude sees when a session begins
 #
 # Input schema (SessionStart): No stdin input
 
-echo "=== Claude Code Game Studios — Session Context ==="
+echo "=== OpenCode Game Studios — Session Context ==="
 
 # Current branch
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)

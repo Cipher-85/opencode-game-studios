@@ -1,5 +1,5 @@
 #!/bin/bash
-# Claude Code PreToolUse hook: Validates git commit commands
+# OpenCode PreToolUse hook: Validates git commit commands
 # Receives JSON on stdin with tool_input.command
 # Exit 0 = allow, Exit 2 = block (stderr shown to Claude)
 #

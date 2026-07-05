@@ -1,4 +1,6 @@
 ---
-description: Show the studio status line — context %, model, production stage, and epic/feature/task breadcrumb.
+description: "Show the studio status — stage, review mode, and active session breadcrumb."
 ---
-!`bash .opencode/hooks/statusline.sh < /dev/null 2>/dev/null || echo "(status unavailable — run inside a session for live data)"`
+@.opencode/skills/studio-status/SKILL.md
+
+Arguments: $ARGUMENTS

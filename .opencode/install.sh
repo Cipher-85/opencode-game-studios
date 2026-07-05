@@ -35,7 +35,7 @@ while [ "$#" -gt 0 ]; do
     --variant-opus)      opus_variant="${2:-}";      shift 2 ;;
     --variant-sonnet)    sonnet_variant="${2:-}";    shift 2 ;;
     --variant-haiku)     haiku_variant="${2:-}";     shift 2 ;;
-    --variants)          opus_variant="${2:-}"; sonnet_variant="${3:-}"; haiku_variant="${4:-}"; shift 3 ;;
+    --variants)          opus_variant="${2:-}"; sonnet_variant="${3:-}"; haiku_variant="${4:-}"; shift 4 ;;
     -*) printf 'install: unknown option: %s\n' "$1" >&2; exit 2 ;;
     *) target_arg="$1"; shift ;;
   esac

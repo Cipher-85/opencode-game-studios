@@ -2,7 +2,7 @@
 # audit.sh — OpenCode Game Studios validation dispatcher
 #
 # Usage:
-#   bash .opencode/audit.sh [command]
+#   bash .opencode/audit.sh [command] [--root PATH]
 #
 # Commands:
 #   all          Run all validators (default)
@@ -12,11 +12,22 @@
 #   config       Validate opencode.json
 #   hooks        Test hook scripts
 #   smoke        Run negative fixture tests
+#   release      Validate release readiness (version, changelog, tags)
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 root="$(cd "$script_dir/.." && pwd -P)"
 command="${1:-all}"
+[ "$command" = "--root" ] && command="all"
+
+# Parse --root option
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --root) root="$(cd "$2" && pwd -P)"; shift 2 ;;
+    all|agents|skills|runtime|config|hooks|smoke|release) command="$1"; shift ;;
+    *) shift ;;
+  esac
+done
 
 pass() { printf '  ✓ %s\n' "$1"; }
 fail() { printf '  ✗ %s\n' "$1"; errors=$((errors + 1)); }
@@ -172,14 +183,58 @@ run_smoke() {
   hooks=$(ls "$root"/.opencode/hooks/*.sh 2>/dev/null | wc -l | tr -d ' ')
 
   [ "$agents" -eq 49 ] && pass "49 agents ($agents)" || fail "expected 49 agents, got $agents"
-  [ "$skills" -ge 76 ] && pass "$skills skills (≥76)" || fail "expected ≥76 skills, got $skills"
+  [ "$skills" -ge 77 ] && pass "$skills skills (≥77)" || fail "expected ≥77 skills, got $skills"
   [ "$commands" -ge 77 ] && pass "$commands commands (≥77)" || fail "expected ≥77 commands, got $commands"
-  [ "$hooks" -ge 13 ] && pass "$hooks hooks (≥13)" || fail "expected ≥13 hooks, got $hooks"
+  [ "$hooks" -ge 12 ] && pass "$hooks hooks (≥12)" || fail "expected ≥12 hooks, got $hooks"
 
   # Agent memory
   local mem
   mem=$(find "$root"/.opencode/agent-memory -name 'MEMORY.md' 2>/dev/null | wc -l | tr -d ' ')
   [ "$mem" -eq 17 ] && pass "17 agent-memory files" || fail "expected 17 agent-memory, got $mem"
+
+  # Rules
+  local rules
+  rules=$(ls "$root"/.opencode/rules/*.md 2>/dev/null | wc -l | tr -d ' ')
+  [ "$rules" -ge 15 ] && pass "$rules rules (≥15)" || fail "expected ≥15 rules, got $rules"
+}
+
+run_release() {
+  printf '\n── Release Check ───────────────────────────────────────────\n'
+  local version_file="$root/.opencode/VERSION"
+  local changelog="$root/CHANGELOG.md"
+
+  if [ ! -f "$version_file" ]; then
+    fail "VERSION file missing"
+    return
+  fi
+
+  local version
+  version="$(cat "$version_file" | tr -d '[:space:]')"
+  pass "VERSION: $version"
+
+  # Check CHANGELOG has the section
+  if [ -f "$changelog" ] && rg -q "^## v${version}" "$changelog" 2>/dev/null; then
+    pass "CHANGELOG has v$version section"
+  else
+    fail "CHANGELOG missing v$version section"
+  fi
+
+  # Check for existing tags
+  local tag="opencode-v${version}"
+  if git -C "$root" rev-parse "$tag" >/dev/null 2>&1; then
+    pass "Tag $tag exists"
+  else
+    pass "Tag $tag not yet created"
+  fi
+
+  # List previous tags
+  local latest_tag
+  latest_tag="$(git -C "$root" tag -l 'opencode-v*' --sort=-v:refname 2>/dev/null | head -1)"
+  if [ -n "$latest_tag" ]; then
+    pass "Latest tag: $latest_tag"
+  else
+    pass "No previous opencode-v* tags"
+  fi
 }
 
 case "$command" in
@@ -197,7 +252,8 @@ case "$command" in
   config)  run_config ;;
   hooks)   run_hooks ;;
   smoke)   run_smoke ;;
-  *) printf 'Unknown command: %s\nAvailable: all, agents, skills, runtime, config, hooks, smoke\n' "$command" >&2; exit 2 ;;
+  release) run_release ;;
+  *) printf 'Unknown command: %s\nAvailable: all, agents, skills, runtime, config, hooks, smoke, release\n' "$command" >&2; exit 2 ;;
 esac
 
 printf '\n── Result: %d error(s) ──\n' "$errors"

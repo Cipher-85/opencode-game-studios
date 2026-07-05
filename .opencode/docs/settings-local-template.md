@@ -1,6 +1,6 @@
 # settings.local.json Template
 
-Create `.claude/settings.local.json` for personal overrides that should NOT
+Create `.opencode/settings.local.json` for personal overrides that should NOT
 be committed to version control. Add it to `.gitignore`.
 
 ## Example settings.local.json
@@ -25,7 +25,7 @@ be committed to version control. Add it to `.gitignore`.
 
 ## Permission Modes
 
-Claude Code supports different permission modes. Recommended for game dev:
+OpenCode supports different permission modes. Recommended for game dev:
 
 ### During Development (Default)
 Use **normal mode** — Claude asks before running most commands. This is safest
