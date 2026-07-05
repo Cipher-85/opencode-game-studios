@@ -133,11 +133,10 @@ fi
 # ── Validate models ──────────────────────────────────────────────
 printf '\n── Validating models ──────────────────────────────────────\n'
 
-# Warn about variants if provided
+# Warn about reasoning effort if provided
 if [ -n "$opus_variant$sonnet_variant$haiku_variant" ]; then
-  printf '  ⚠  Variants are provider-specific. If your provider does not support\n' >&2
-  printf '     the variant parameter, subagent tasks will fail with "Invalid API\n' >&2
-  printf '     parameter". If this happens, re-run without --variant-* flags.\n\n' >&2
+  printf '  Note: reasoning effort maps to the provider'\''s reasoning_effort API parameter.\n'
+  printf '  Z.AI/GLM accepts: max, high, low. Other providers may differ.\n\n'
 fi
 
 validation_failed=0

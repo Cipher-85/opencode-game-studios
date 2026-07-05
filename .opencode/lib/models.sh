@@ -60,12 +60,12 @@ else:
 " 2>/dev/null
 }
 
-# Inject or replace model: in an agent file's frontmatter
-# Usage: ccgs_inject_model <agent_file> <model_id> [variant]
-# Note: variant is provider-specific and may cause "Invalid API parameter"
-# errors if the provider doesn't support it. Leave empty to omit.
+# Inject or replace model: and reasoningEffort: in an agent file's frontmatter
+# Usage: ccgs_inject_model <agent_file> <model_id> [effort]
+# Note: reasoningEffort maps to the provider's reasoning_effort API parameter.
+# Z.AI/GLM accepts: "max", "high", "low". Other providers may differ.
 ccgs_inject_model() {
-  local file="$1" model_id="$2" variant="${3:-}"
+  local file="$1" model_id="$2" effort="${3:-}"
   python3 -c "
 import sys, re, yaml
 
@@ -74,14 +74,15 @@ with open('$file') as f:
 
 m = re.match(r'^(---\n)(.*?)(\n---)', txt, re.S)
 if not m:
-    print(f'ERROR: no frontmatter in $file', file=sys.stderr)
+    print(f'ERROR: no frontmatter in {file}', file=sys.stderr)
     sys.exit(1)
 
 fm = yaml.safe_load(m.group(2))
 fm['model'] = '$model_id'
-if '$variant':
-    fm['variant'] = '$variant'
+if '$effort':
+    fm['reasoningEffort'] = '$effort'
 else:
+    fm.pop('reasoningEffort', None)
     fm.pop('variant', None)
 
 # Re-dump frontmatter preserving key order
@@ -109,12 +110,10 @@ if not m:
 
 fm = yaml.safe_load(m.group(2))
 changed = False
-if 'model' in fm:
-    del fm['model']
-    changed = True
-if 'variant' in fm:
-    del fm['variant']
-    changed = True
+for key in ('model', 'variant', 'reasoningEffort'):
+    if key in fm:
+        del fm[key]
+        changed = True
 if not changed:
     sys.exit(0)
 
