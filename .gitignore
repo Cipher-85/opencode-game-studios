@@ -148,3 +148,6 @@ $RECYCLE.BIN/
 # Local planning docs (not tracked)
 oc-vs-codex.md
 opencode-plan.md
+
+# Plugin payload captures (debug artifacts)
+porting-reports/
