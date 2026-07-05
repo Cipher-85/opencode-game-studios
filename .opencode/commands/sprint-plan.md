@@ -1,6 +1,5 @@
 ---
 description: Generates a new sprint plan or updates an existing one based on the current milestone, completed work, and available capacity. Pulls context from production documents and design backlogs.
-subtask: true
 ---
 @.opencode/skills/sprint-plan/SKILL.md
 
