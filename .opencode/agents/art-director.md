@@ -3,17 +3,14 @@ description: 'The Art Director owns the visual identity of the game: style guide
 mode: subagent
 steps: 20
 permission:
-  read: allow
+  '*': deny
   edit: allow
   glob: allow
   grep: allow
-  bash: deny
-  task: deny
-  websearch: allow
-  webfetch: deny
   question: allow
+  read: allow
   todowrite: allow
-  lsp: deny
+  websearch: allow
   skill: deny
 metadata:
   ccgs_tier: sonnet

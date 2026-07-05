@@ -3,17 +3,13 @@ description: The Writer creates dialogue, lore entries, item descriptions, envir
 mode: subagent
 steps: 20
 permission:
-  read: allow
+  '*': deny
   edit: allow
   glob: allow
   grep: allow
-  bash: deny
-  task: deny
-  websearch: deny
-  webfetch: deny
   question: allow
+  read: allow
   todowrite: allow
-  lsp: deny
   skill: deny
 metadata:
   ccgs_tier: sonnet

@@ -3,17 +3,14 @@ description: The Creative Director is the highest-level creative authority for t
 mode: subagent
 steps: 30
 permission:
-  read: allow
+  '*': deny
   edit: allow
   glob: allow
   grep: allow
-  bash: deny
-  task: deny
-  websearch: allow
-  webfetch: deny
   question: allow
+  read: allow
   todowrite: allow
-  lsp: deny
+  websearch: allow
   skill:
     '*': deny
     brainstorm: allow

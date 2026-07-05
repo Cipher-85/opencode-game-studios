@@ -3,17 +3,14 @@ description: 'The live-ops designer owns post-launch content strategy: seasonal 
 mode: subagent
 steps: 20
 permission:
-  read: allow
+  '*': deny
   edit: allow
   glob: allow
   grep: allow
-  bash: deny
-  task: allow
-  websearch: deny
-  webfetch: deny
   question: allow
+  read: allow
+  task: allow
   todowrite: allow
-  lsp: deny
   skill: deny
 metadata:
   ccgs_tier: sonnet

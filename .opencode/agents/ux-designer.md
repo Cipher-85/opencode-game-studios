@@ -3,17 +3,14 @@ description: The UX Designer owns user experience flows, interaction design, acc
 mode: subagent
 steps: 20
 permission:
-  read: allow
+  '*': deny
   edit: allow
   glob: allow
   grep: allow
-  bash: deny
-  task: deny
-  websearch: allow
-  webfetch: deny
   question: allow
+  read: allow
   todowrite: allow
-  lsp: deny
+  websearch: allow
   skill: deny
 metadata:
   ccgs_tier: sonnet

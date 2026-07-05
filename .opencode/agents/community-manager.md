@@ -3,17 +3,14 @@ description: 'The community manager owns player-facing communication: patch note
 mode: subagent
 steps: 10
 permission:
-  read: allow
+  '*': deny
   edit: allow
   glob: allow
   grep: allow
-  bash: deny
-  task: allow
-  websearch: deny
-  webfetch: deny
   question: allow
+  read: allow
+  task: allow
   todowrite: allow
-  lsp: deny
   skill: deny
 metadata:
   ccgs_tier: haiku

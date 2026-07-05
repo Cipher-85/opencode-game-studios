@@ -1,168 +1,257 @@
 /**
  * CCGS Hooks Plugin — OpenCode events → Claude-shaped shell scripts.
  *
- * Each OpenCode event delegates to the preserved shell script in .opencode/hooks/,
- * building a Claude-shaped stdin JSON so the scripts stay nearly unchanged.
+ * Uses node:child_process.spawn for portable script execution (no Bun shell
+ * dependency). Includes payload capture for Stage 2 runtime verification and
+ * __test exports for unit testing normalization functions.
  *
- * Event map (see PORTING_NOTES.md §5):
+ * Event map:
  *   session.created                  → session-start.sh, detect-gaps.sh
  *   tool.execute.before (bash)       → validate-commit.sh, validate-push.sh
- *   tool.execute.before (task)       → log-agent.sh           (SubagentStart emulation)
+ *   tool.execute.before (task)       → log-agent.sh
  *   tool.execute.after (write/edit)  → validate-assets.sh, validate-skill-change.sh
- *   tool.execute.after (task)        → log-agent-stop.sh      (SubagentStop emulation)
- *   experimental.session.compacting  → pre-compact.sh         (injects output.context[])
+ *   tool.execute.after (task)        → log-agent-stop.sh
+ *   experimental.session.compacting  → pre-compact.sh (injects output.context[])
  *   session.compacted                → post-compact.sh
  *   session.idle                     → session-stop.sh
- *
- * Exit semantics:
- *   advisory scripts (exit 0)  → run silently, side-effects only
- *   blocking scripts (exit 1/2)→ throw to abort the tool call
  */
 
-export const CCGSHooks = async ({ project, client, $, directory, worktree }) => {
-  const cwd = worktree || directory
+import { spawn } from "node:child_process"
+import fs from "node:fs"
+import path from "node:path"
 
-  /**
-   * Run a hook script, piping Claude-shaped JSON to its stdin.
-   * Returns { exitCode, stdout, stderr }.
-   */
-  async function runScript(script, stdinData) {
-    const input = stdinData ? JSON.stringify(stdinData) : "{}"
-    let cmd = $`printf '%s' ${input} | bash .opencode/hooks/${script}`.nothrow().quiet()
-    // .cwd() is supported on Bun's $ shell; guard in case of version differences
-    if (typeof cmd.cwd === "function") cmd = cmd.cwd(cwd)
-    const result = await cmd
+// ── Constants ────────────────────────────────────────────────────
+
+const HOOK_TIMEOUT_DEFAULT = 10000
+const HOOK_TIMEOUT_COMMIT = 15000
+
+const TOOL_NAME = {
+  bash: "Bash",
+  write: "Write",
+  edit: "Edit",
+  apply_patch: "Edit",
+  patch: "Edit",
+  task: "Task",
+}
+
+// ── Helpers ──────────────────────────────────────────────────────
+
+function firstDefined(...values) {
+  return values.find((v) => v !== undefined && v !== null && v !== "")
+}
+
+/**
+ * Extract file path from an apply_patch / patch payload.
+ * Handles both current JSON and legacy raw-patch formats.
+ */
+function extractApplyPatchPath(patchText = "") {
+  const patterns = [
+    /^\*\*\* (?:Add|Update|Delete) File: (.+)$/m,
+    /^--- [ab]\/(.+)$/m,
+    /^\+\+\+ [ab]\/(.+)$/m,
+  ]
+  for (const pattern of patterns) {
+    const match = patchText.match(pattern)
+    if (match) {
+      const p = match[1].trim()
+      if (p && p !== "/dev/null") return p
+    }
+  }
+  return ""
+}
+
+/**
+ * Normalize a tool.execute.before/after payload into Claude-shaped JSON
+ * that the shell scripts expect on stdin.
+ */
+function normalizeToolExecution(input = {}, output = {}) {
+  const tool = input.tool || input.tool_name || input.name || ""
+  const args = { ...(input.args || {}), ...(input.tool_input || {}), ...(output.args || {}) }
+
+  const payload = {
+    tool_name: TOOL_NAME[tool] || tool,
+    tool_input: {},
+  }
+
+  if (tool === "bash") {
+    payload.tool_input.command = firstDefined(args.command, args.cmd, "")
+  } else if (["write", "edit", "apply_patch", "patch"].includes(tool)) {
+    const filePath = firstDefined(args.filePath, args.file_path, "")
+    if (filePath) {
+      payload.tool_input.file_path = filePath
+    } else if (tool === "apply_patch" || tool === "patch") {
+      const patchText = firstDefined(args.patch, args.diff, "")
+      const extracted = extractApplyPatchPath(patchText)
+      if (extracted) payload.tool_input.file_path = extracted
+    }
+  } else if (tool === "task") {
+    payload.agent_type = firstDefined(args.subagent_type, args.type, "unknown")
+  }
+
+  return payload
+}
+
+/**
+ * Normalize a session/event payload for hooks that read agent_type or message.
+ */
+function normalizeEventPayload(event = {}) {
+  const type = event.type || event.name || ""
+  const properties = event.properties || event
+  if (type === "tui.toast.show") {
     return {
-      exitCode: result.exitCode ?? 0,
-      stdout: String(result.stdout ?? ""),
-      stderr: String(result.stderr ?? ""),
+      message: firstDefined(properties.message, properties.text, properties.title, ""),
     }
+  }
+  return {
+    event: type,
+    session_id: firstDefined(properties.sessionID, properties.session_id, properties.id, ""),
+    cwd: firstDefined(properties.cwd, properties.directory, ""),
+  }
+}
+
+// ── Payload capture (Stage 2 runtime verification) ──────────────
+
+function capturePayload(root, eventName, payload) {
+  try {
+    const dir = path.join(root, "porting-reports", "runtime-payload-captures")
+    fs.mkdirSync(dir, { recursive: true })
+    const file = path.join(dir, `${eventName}.jsonl`)
+    fs.appendFileSync(
+      file,
+      JSON.stringify({ captured_at: new Date().toISOString(), payload }) + "\n"
+    )
+  } catch {
+    // capture is best-effort
+  }
+}
+
+// ── Script runner ───────────────────────────────────────────────
+
+/**
+ * Run a hook script with stdin payload. Returns { code, stdout, stderr }.
+ * Throws on non-zero exit if options.blocking is true.
+ */
+async function runScript(root, scriptName, payload, options = {}) {
+  const script = path.join(root, ".opencode", "hooks", scriptName)
+  const child = spawn("bash", [script], {
+    cwd: root,
+    stdio: ["pipe", "pipe", "pipe"],
+  })
+
+  let stdout = ""
+  let stderr = ""
+  child.stdout.on("data", (chunk) => { stdout += chunk.toString() })
+  child.stderr.on("data", (chunk) => { stderr += chunk.toString() })
+
+  child.stdin.end(JSON.stringify(payload || {}))
+
+  const code = await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      child.kill("SIGTERM")
+      reject(new Error(`Hook ${scriptName} timed out`))
+    }, options.timeoutMs || HOOK_TIMEOUT_DEFAULT)
+
+    child.on("close", (exitCode) => {
+      clearTimeout(timeout)
+      resolve(exitCode)
+    })
+    child.on("error", reject)
+  })
+
+  const output = `${stdout}${stderr}`.trim()
+
+  if (options.blocking && code !== 0) {
+    throw new Error(output || `Hook ${scriptName} blocked with exit code ${code}`)
   }
 
-  /** Blocking helper: throw if the script exited with a non-zero blocking code. */
-  function blockIfFailed(result, codes = [1, 2]) {
-    if (codes.includes(result.exitCode)) {
-      const msg = (result.stderr || result.stdout || "").trim()
-      throw new Error(msg || "Hook blocked this operation.")
-    }
+  if (output) {
+    // Advisory output — visible but non-blocking
+    console.warn(output)
   }
 
-  /** Best-effort advisory log. */
-  async function advise(result) {
-    const out = (result.stderr || result.stdout || "").trim()
-    if (out) {
-      try {
-        await client.app.log({ body: { service: "ccgs-hooks", level: "info", message: out } })
-      } catch (_) { /* logging is best-effort */ }
-    }
-  }
+  return { code, stdout, stderr }
+}
+
+// ── Root resolution ─────────────────────────────────────────────
+
+function resolveRoot(directory, worktree) {
+  const candidate = worktree || directory || process.cwd()
+  return candidate && candidate !== "/" ? candidate : process.cwd()
+}
+
+// ── Plugin export ───────────────────────────────────────────────
+
+export default async function CCGSHooks({ directory, worktree }) {
+  const root = resolveRoot(directory, worktree)
 
   return {
-    // ── SessionStart emulation ──────────────────────────────────────────
-    "session.created": async () => {
-      const r1 = await runScript("session-start.sh")
-      const r2 = await runScript("detect-gaps.sh")
-      // session.created has no conversation-injection mechanism (documented gap);
-      // scripts run for side-effects + we log advisory output.
-      await advise(r1)
-      await advise(r2)
+    // ── Session events ──────────────────────────────────────────
+    event: async ({ event }) => {
+      const payload = normalizeEventPayload(event)
+      capturePayload(root, event.type || "event", payload)
+
+      if (event.type === "session.created") {
+        await runScript(root, "session-start.sh", payload)
+        await runScript(root, "detect-gaps.sh", payload)
+      } else if (event.type === "session.compacted") {
+        await runScript(root, "post-compact.sh", payload)
+      } else if (event.type === "session.idle") {
+        await runScript(root, "session-stop.sh", payload)
+      }
     },
 
-    // ── PreToolUse emulation ────────────────────────────────────────────
+    // ── PreToolUse emulation ────────────────────────────────────
     "tool.execute.before": async (input, output) => {
+      const payload = normalizeToolExecution(input, output)
+      capturePayload(root, `tool.execute.before.${input.tool || "unknown"}`, payload)
+
       if (input.tool === "bash") {
-        const command = output.args?.command ?? ""
-        // validate-commit.sh — exit 2 = block
-        const r1 = await runScript("validate-commit.sh", {
-          tool_name: "Bash",
-          tool_input: { command },
+        await runScript(root, "validate-commit.sh", payload, {
+          blocking: true, timeoutMs: HOOK_TIMEOUT_COMMIT,
         })
-        if (r1.exitCode !== 0) {
-          await advise(r1)
-          blockIfFailed(r1, [2])
-        }
-        // validate-push.sh — exit 2 = block (currently advisory upstream)
-        const r2 = await runScript("validate-push.sh", {
-          tool_name: "Bash",
-          tool_input: { command },
+        await runScript(root, "validate-push.sh", payload, {
+          blocking: true, timeoutMs: HOOK_TIMEOUT_DEFAULT,
         })
-        if (r2.exitCode !== 0) await advise(r2)
-        blockIfFailed(r2, [2])
-      }
-
-      // SubagentStart emulation via task tool
-      if (input.tool === "task") {
-        const agentType =
-          output.args?.subagent_type || output.args?.type || "unknown"
-        await runScript("log-agent.sh", { agent_type: agentType })
+      } else if (input.tool === "task") {
+        await runScript(root, "log-agent.sh", payload)
       }
     },
 
-    // ── PostToolUse emulation ───────────────────────────────────────────
+    // ── PostToolUse emulation ───────────────────────────────────
     "tool.execute.after": async (input, output) => {
-      if (["write", "edit", "apply_patch"].includes(input.tool)) {
-        // Extract file path(s); apply_patch may touch multiple files
-        let paths = []
-        if (input.tool === "apply_patch") {
-          const patch = output.args?.patch || output.args?.diff || ""
-          const re = /^[+-]{3}\s+(.*)$/gm
-          let m
-          while ((m = re.exec(patch)) !== null) {
-            const p = m[1].trim()
-            if (p && p !== "/dev/null") paths.push(p)
-          }
-        }
-        if (paths.length === 0 && output.args?.filePath) {
-          paths = [output.args.filePath]
-        }
-        if (paths.length === 0 && output.args?.file_path) {
-          paths = [output.args.file_path]
-        }
+      const payload = normalizeToolExecution(input, output)
+      capturePayload(root, `tool.execute.after.${input.tool || "unknown"}`, payload)
 
-        for (const filePath of paths) {
-          // validate-assets.sh — exit 1 = block (upstream uses exit 1, not 2)
-          const r1 = await runScript("validate-assets.sh", {
-            tool_name: "Write",
-            tool_input: { file_path: filePath },
-          })
-          if (r1.exitCode !== 0) {
-            await advise(r1)
-            blockIfFailed(r1, [1])
-          }
-          // validate-skill-change.sh — advisory only
-          const r2 = await runScript("validate-skill-change.sh", {
-            tool_name: "Write",
-            tool_input: { file_path: filePath },
-          })
-          await advise(r2)
-        }
-      }
-
-      // SubagentStop emulation via task tool
-      if (input.tool === "task") {
-        const agentType =
-          output.args?.subagent_type || output.args?.type || "unknown"
-        await runScript("log-agent-stop.sh", { agent_type: agentType })
+      if (["write", "edit", "apply_patch", "patch"].includes(input.tool)) {
+        await runScript(root, "validate-assets.sh", payload, {
+          blocking: true, timeoutMs: HOOK_TIMEOUT_DEFAULT,
+        })
+        await runScript(root, "validate-skill-change.sh", payload)
+      } else if (input.tool === "task") {
+        await runScript(root, "log-agent-stop.sh", payload)
       }
     },
 
-    // ── PreCompact emulation ────────────────────────────────────────────
+    // ── PreCompact emulation ────────────────────────────────────
     "experimental.session.compacting": async (input, output) => {
-      const r = await runScript("pre-compact.sh")
-      if (r.stdout) {
-        output.context.push(r.stdout)
+      const payload = normalizeEventPayload({
+        type: "experimental.session.compacting", ...input,
+      })
+      capturePayload(root, "experimental.session.compacting", payload)
+
+      const result = await runScript(root, "pre-compact.sh", payload)
+      output.context = output.context || []
+      if (result.stdout.trim()) {
+        output.context.push(result.stdout)
       }
-    },
-
-    // ── PostCompact emulation ───────────────────────────────────────────
-    "session.compacted": async () => {
-      const r = await runScript("post-compact.sh")
-      await advise(r)
-    },
-
-    // ── Stop emulation ──────────────────────────────────────────────────
-    "session.idle": async () => {
-      await runScript("session-stop.sh")
     },
   }
+}
+
+// ── Test exports ────────────────────────────────────────────────
+
+CCGSHooks.__test = {
+  normalizeToolExecution,
+  normalizeEventPayload,
+  extractApplyPatchPath,
 }

@@ -3,17 +3,15 @@ description: The Analytics Engineer designs telemetry systems, player behavior t
 mode: subagent
 steps: 20
 permission:
-  read: allow
+  '*': deny
+  bash: allow
   edit: allow
   glob: allow
   grep: allow
-  bash: allow
-  task: deny
-  websearch: allow
-  webfetch: deny
   question: allow
+  read: allow
   todowrite: allow
-  lsp: deny
+  websearch: allow
   skill: deny
 metadata:
   ccgs_tier: sonnet

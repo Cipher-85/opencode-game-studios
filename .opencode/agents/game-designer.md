@@ -3,17 +3,14 @@ description: The Game Designer owns the mechanical and systems design of the gam
 mode: subagent
 steps: 20
 permission:
-  read: allow
+  '*': deny
   edit: allow
   glob: allow
   grep: allow
-  bash: deny
-  task: deny
-  websearch: allow
-  webfetch: deny
   question: allow
+  read: allow
   todowrite: allow
-  lsp: deny
+  websearch: allow
   skill:
     '*': deny
     design-review: allow

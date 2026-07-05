@@ -3,17 +3,14 @@ description: The Accessibility Specialist ensures the game is playable by the wi
 mode: subagent
 steps: 10
 permission:
-  read: allow
+  '*': deny
+  bash: allow
   edit: allow
   glob: allow
   grep: allow
-  bash: allow
-  task: deny
-  websearch: deny
-  webfetch: deny
   question: allow
+  read: allow
   todowrite: allow
-  lsp: deny
   skill: deny
 metadata:
   ccgs_tier: sonnet

@@ -3,17 +3,14 @@ description: The DevOps Engineer maintains build pipelines, CI/CD configuration,
 mode: subagent
 steps: 10
 permission:
-  read: allow
+  '*': deny
+  bash: allow
   edit: allow
   glob: allow
   grep: allow
-  bash: allow
-  task: deny
-  websearch: deny
-  webfetch: deny
   question: allow
+  read: allow
   todowrite: allow
-  lsp: deny
   skill: deny
 metadata:
   ccgs_tier: haiku

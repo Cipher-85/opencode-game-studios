@@ -60,10 +60,10 @@ else:
 " 2>/dev/null
 }
 
-# Inject or replace model: in an agent file's frontmatter
-# Usage: ccgs_inject_model <agent_file> <model_id>
+# Inject or replace model: and variant: in an agent file's frontmatter
+# Usage: ccgs_inject_model <agent_file> <model_id> [variant]
 ccgs_inject_model() {
-  local file="$1" model_id="$2"
+  local file="$1" model_id="$2" variant="${3:-}"
   python3 -c "
 import sys, re, yaml
 
@@ -72,11 +72,15 @@ with open('$file') as f:
 
 m = re.match(r'^(---\n)(.*?)(\n---)', txt, re.S)
 if not m:
-    print(f'ERROR: no frontmatter in {file}', file=sys.stderr)
+    print(f'ERROR: no frontmatter in $file', file=sys.stderr)
     sys.exit(1)
 
 fm = yaml.safe_load(m.group(2))
 fm['model'] = '$model_id'
+if '$variant':
+    fm['variant'] = '$variant'
+else:
+    fm.pop('variant', None)
 
 # Re-dump frontmatter preserving key order
 out = yaml.dump(fm, sort_keys=False, default_flow_style=False, allow_unicode=True, width=1000)
@@ -102,10 +106,16 @@ if not m:
     sys.exit(0)
 
 fm = yaml.safe_load(m.group(2))
-if 'model' not in fm:
+changed = False
+if 'model' in fm:
+    del fm['model']
+    changed = True
+if 'variant' in fm:
+    del fm['variant']
+    changed = True
+if not changed:
     sys.exit(0)
 
-del fm['model']
 out = yaml.dump(fm, sort_keys=False, default_flow_style=False, allow_unicode=True, width=1000)
 result = f'---\n{out}---{txt[m.end():]}'
 
@@ -161,9 +171,10 @@ EOF
 }
 
 # Inject models into all agents based on tier
-# Usage: ccgs_inject_all_agents <root> <opus_model> <sonnet_model> <haiku_model>
+# Usage: ccgs_inject_all_agents <root> <opus_model> <sonnet_model> <haiku_model> [opus_variant] [sonnet_variant] [haiku_variant]
 ccgs_inject_all_agents() {
   local root="$1" opus="$2" sonnet="$3" haiku="$4"
+  local opus_var="${5:-}" sonnet_var="${6:-}" haiku_var="${7:-}"
   local agents_dir="$root/.opencode/agents"
   local count=0
 
@@ -173,15 +184,19 @@ ccgs_inject_all_agents() {
     tier="$(ccgs_get_agent_tier "$agent_file" 2>/dev/null)" || tier="sonnet"
 
     case "$tier" in
-      opus)   model_id="$opus" ;;
-      sonnet) model_id="$sonnet" ;;
-      haiku)  model_id="$haiku" ;;
-      *)      model_id="$sonnet" ;;
+      opus)   model_id="$opus";  variant="$opus_var" ;;
+      sonnet) model_id="$sonnet"; variant="$sonnet_var" ;;
+      haiku)  model_id="$haiku"; variant="$haiku_var" ;;
+      *)      model_id="$sonnet"; variant="$sonnet_var" ;;
     esac
 
-    ccgs_inject_model "$agent_file" "$model_id"
+    ccgs_inject_model "$agent_file" "$model_id" "$variant"
     count=$((count + 1))
-    printf '  %s (%s) → %s\n' "$name" "$tier" "$model_id"
+    if [ -n "$variant" ]; then
+      printf '  %s (%s) → %s [%s]\n' "$name" "$tier" "$model_id" "$variant"
+    else
+      printf '  %s (%s) → %s\n' "$name" "$tier" "$model_id"
+    fi
   done
 
   printf 'Configured %d agents\n' "$count"

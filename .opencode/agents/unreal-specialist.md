@@ -3,17 +3,15 @@ description: The Unreal Engine Specialist is the authority on all Unreal-specifi
 mode: subagent
 steps: 20
 permission:
-  read: allow
+  '*': deny
+  bash: allow
   edit: allow
   glob: allow
   grep: allow
-  bash: allow
-  task: allow
-  websearch: deny
-  webfetch: deny
   question: allow
+  read: allow
+  task: allow
   todowrite: allow
-  lsp: deny
   skill: deny
 metadata:
   ccgs_tier: sonnet

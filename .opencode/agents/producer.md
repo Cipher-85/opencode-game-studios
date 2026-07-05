@@ -3,17 +3,15 @@ description: 'The Producer manages all production concerns: sprint planning, mil
 mode: subagent
 steps: 30
 permission:
-  read: allow
+  '*': deny
+  bash: allow
   edit: allow
   glob: allow
   grep: allow
-  bash: allow
-  task: deny
-  websearch: allow
-  webfetch: deny
   question: allow
+  read: allow
   todowrite: allow
-  lsp: deny
+  websearch: allow
   skill:
     '*': deny
     sprint-plan: allow
