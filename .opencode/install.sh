@@ -133,6 +133,13 @@ fi
 # ── Validate models ──────────────────────────────────────────────
 printf '\n── Validating models ──────────────────────────────────────\n'
 
+# Warn about variants if provided
+if [ -n "$opus_variant$sonnet_variant$haiku_variant" ]; then
+  printf '  ⚠  Variants are provider-specific. If your provider does not support\n' >&2
+  printf '     the variant parameter, subagent tasks will fail with "Invalid API\n' >&2
+  printf '     parameter". If this happens, re-run without --variant-* flags.\n\n' >&2
+fi
+
 validation_failed=0
 for tier in opus sonnet haiku; do
   eval "model=\"\${${tier}_model:-}\""

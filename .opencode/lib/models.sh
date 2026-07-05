@@ -60,8 +60,10 @@ else:
 " 2>/dev/null
 }
 
-# Inject or replace model: and variant: in an agent file's frontmatter
+# Inject or replace model: in an agent file's frontmatter
 # Usage: ccgs_inject_model <agent_file> <model_id> [variant]
+# Note: variant is provider-specific and may cause "Invalid API parameter"
+# errors if the provider doesn't support it. Leave empty to omit.
 ccgs_inject_model() {
   local file="$1" model_id="$2" variant="${3:-}"
   python3 -c "
