@@ -1197,6 +1197,11 @@
       "mode": "copy"
     },
     {
+      "path": ".opencode/lib/validate_port.py",
+      "owner": "opencode-game-studios",
+      "mode": "copy"
+    },
+    {
       "path": ".opencode/manifest/expected-targets.json",
       "owner": "opencode-game-studios",
       "mode": "copy"
@@ -2362,27 +2367,7 @@
       "mode": "copy"
     },
     {
-      "path": "assets/data/AGENTS.md",
-      "owner": "opencode-game-studios",
-      "mode": "copy"
-    },
-    {
-      "path": "assets/shaders/AGENTS.md",
-      "owner": "opencode-game-studios",
-      "mode": "copy"
-    },
-    {
       "path": "design/AGENTS.md",
-      "owner": "opencode-game-studios",
-      "mode": "copy"
-    },
-    {
-      "path": "design/gdd/AGENTS.md",
-      "owner": "opencode-game-studios",
-      "mode": "copy"
-    },
-    {
-      "path": "design/narrative/AGENTS.md",
       "owner": "opencode-game-studios",
       "mode": "copy"
     },
@@ -2712,57 +2697,12 @@
       "mode": "copy"
     },
     {
-      "path": "prototypes/AGENTS.md",
-      "owner": "opencode-game-studios",
-      "mode": "copy"
-    },
-    {
       "path": "src/.gitkeep",
       "owner": "opencode-game-studios",
       "mode": "copy"
     },
     {
       "path": "src/AGENTS.md",
-      "owner": "opencode-game-studios",
-      "mode": "copy"
-    },
-    {
-      "path": "src/ai/AGENTS.md",
-      "owner": "opencode-game-studios",
-      "mode": "copy"
-    },
-    {
-      "path": "src/core/AGENTS.md",
-      "owner": "opencode-game-studios",
-      "mode": "copy"
-    },
-    {
-      "path": "src/gameplay/AGENTS.md",
-      "owner": "opencode-game-studios",
-      "mode": "copy"
-    },
-    {
-      "path": "src/networking/AGENTS.md",
-      "owner": "opencode-game-studios",
-      "mode": "copy"
-    },
-    {
-      "path": "src/ui/AGENTS.md",
-      "owner": "opencode-game-studios",
-      "mode": "copy"
-    },
-    {
-      "path": "tests/AGENTS.md",
-      "owner": "opencode-game-studios",
-      "mode": "copy"
-    },
-    {
-      "path": "tools/AGENTS.md",
-      "owner": "opencode-game-studios",
-      "mode": "copy"
-    },
-    {
-      "path": "tools/validate_port.py",
       "owner": "opencode-game-studios",
       "mode": "copy"
     }

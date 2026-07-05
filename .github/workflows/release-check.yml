@@ -25,7 +25,7 @@ jobs:
         run: pip install pyyaml
 
       - name: Validate port structure
-        run: python3 tools/validate_port.py --root .
+        run: python3 .opencode/lib/validate_port.py --root .
 
       - name: Validate plugin syntax
         run: node -c .opencode/plugins/ccgs-hooks.js

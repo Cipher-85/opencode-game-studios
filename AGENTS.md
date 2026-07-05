@@ -100,27 +100,27 @@ blocker must be cleared first.
 
 ## Path-Scoped Instructions
 
-Before creating or editing files matching a path below, read the listed
-AGENTS.md file(s) with your Read tool. These files contain discipline rules you
-must follow for that path.
+Before creating or editing files matching a path below, read the listed rule
+file(s) from `.opencode/rules/` with your Read tool. These files contain
+discipline rules you must follow for that path.
 
 | Path | Rule file(s) |
 | ---- | ---- |
-| `src/**` | `src/AGENTS.md` |
-| `src/gameplay/**` | `src/AGENTS.md`, `src/gameplay/AGENTS.md` |
-| `src/core/**` | `src/AGENTS.md`, `src/core/AGENTS.md` |
-| `src/ai/**` | `src/AGENTS.md`, `src/ai/AGENTS.md` |
-| `src/networking/**` | `src/AGENTS.md`, `src/networking/AGENTS.md` |
-| `src/ui/**` | `src/AGENTS.md`, `src/ui/AGENTS.md` |
-| `design/**` | `design/AGENTS.md` |
-| `design/gdd/**` | `design/AGENTS.md`, `design/gdd/AGENTS.md` |
-| `design/narrative/**` | `design/AGENTS.md`, `design/narrative/AGENTS.md` |
-| `docs/**` | `docs/AGENTS.md` |
-| `assets/data/**` | `assets/data/AGENTS.md` |
-| `assets/shaders/**` | `assets/shaders/AGENTS.md` |
-| `tests/**` | `tests/AGENTS.md` |
-| `tools/**` | `tools/AGENTS.md` |
-| `prototypes/**` | `prototypes/AGENTS.md` |
+| `src/**` | `.opencode/rules/source-code.md` |
+| `src/gameplay/**` | `.opencode/rules/source-code.md`, `.opencode/rules/gameplay-code.md` |
+| `src/core/**` | `.opencode/rules/source-code.md`, `.opencode/rules/engine-code.md` |
+| `src/ai/**` | `.opencode/rules/source-code.md`, `.opencode/rules/ai-code.md` |
+| `src/networking/**` | `.opencode/rules/source-code.md`, `.opencode/rules/network-code.md` |
+| `src/ui/**` | `.opencode/rules/source-code.md`, `.opencode/rules/ui-code.md` |
+| `design/**` | `.opencode/rules/design-directory.md` |
+| `design/gdd/**` | `.opencode/rules/design-directory.md`, `.opencode/rules/design-docs.md` |
+| `design/narrative/**` | `.opencode/rules/design-directory.md`, `.opencode/rules/narrative.md` |
+| `docs/**` | `.opencode/rules/docs-directory.md` |
+| `assets/data/**` | `.opencode/rules/data-files.md` |
+| `assets/shaders/**` | `.opencode/rules/shader-code.md` |
+| `tests/**` | `.opencode/rules/test-standards.md` |
+| `tools/**` | `.opencode/rules/tool-code.md` |
+| `prototypes/**` | `.opencode/rules/prototype-code.md` |
 
 ## Code-Turn Discipline
 

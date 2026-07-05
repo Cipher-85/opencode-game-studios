@@ -1197,6 +1197,11 @@
       "owner": "opencode-game-studios"
     },
     {
+      "path": ".opencode/lib/validate_port.py",
+      "category": "deployed",
+      "owner": "opencode-game-studios"
+    },
+    {
       "path": ".opencode/manifest/expected-targets.json",
       "category": "deployed",
       "owner": "opencode-game-studios"
@@ -2362,27 +2367,7 @@
       "owner": "opencode-game-studios"
     },
     {
-      "path": "assets/data/AGENTS.md",
-      "category": "deployed",
-      "owner": "opencode-game-studios"
-    },
-    {
-      "path": "assets/shaders/AGENTS.md",
-      "category": "deployed",
-      "owner": "opencode-game-studios"
-    },
-    {
       "path": "design/AGENTS.md",
-      "category": "deployed",
-      "owner": "opencode-game-studios"
-    },
-    {
-      "path": "design/gdd/AGENTS.md",
-      "category": "deployed",
-      "owner": "opencode-game-studios"
-    },
-    {
-      "path": "design/narrative/AGENTS.md",
       "category": "deployed",
       "owner": "opencode-game-studios"
     },
@@ -2712,57 +2697,12 @@
       "owner": "opencode-game-studios"
     },
     {
-      "path": "prototypes/AGENTS.md",
-      "category": "deployed",
-      "owner": "opencode-game-studios"
-    },
-    {
       "path": "src/.gitkeep",
       "category": "deployed",
       "owner": "opencode-game-studios"
     },
     {
       "path": "src/AGENTS.md",
-      "category": "deployed",
-      "owner": "opencode-game-studios"
-    },
-    {
-      "path": "src/ai/AGENTS.md",
-      "category": "deployed",
-      "owner": "opencode-game-studios"
-    },
-    {
-      "path": "src/core/AGENTS.md",
-      "category": "deployed",
-      "owner": "opencode-game-studios"
-    },
-    {
-      "path": "src/gameplay/AGENTS.md",
-      "category": "deployed",
-      "owner": "opencode-game-studios"
-    },
-    {
-      "path": "src/networking/AGENTS.md",
-      "category": "deployed",
-      "owner": "opencode-game-studios"
-    },
-    {
-      "path": "src/ui/AGENTS.md",
-      "category": "deployed",
-      "owner": "opencode-game-studios"
-    },
-    {
-      "path": "tests/AGENTS.md",
-      "category": "deployed",
-      "owner": "opencode-game-studios"
-    },
-    {
-      "path": "tools/AGENTS.md",
-      "category": "deployed",
-      "owner": "opencode-game-studios"
-    },
-    {
-      "path": "tools/validate_port.py",
       "category": "deployed",
       "owner": "opencode-game-studios"
     }
