@@ -1,6 +1,6 @@
 # Audit: OpenCode Game Studios vs Codex Game Studios
 
-> **Created:** 2026-07-05
+> **Created:** 2026-07-05 (updated 2026-07-05)
 > **Codex source:** https://github.com/Cipher-85/Codex-Game-Studios (v0.3.0, cloned `--depth 1`)
 > **OpenCode target:** https://github.com/Cipher-85/opencode-game-studios (commit `2f72e8f`, `main`)
 
@@ -9,14 +9,20 @@
 ## Overview
 
 The Codex-Game-Studios port (v0.3.0) has evolved significantly beyond a
-mechanical port — it added **behavioral QoL improvements** that are
-engine-agnostic and should be bridged to OpenCode. The gap falls into 8
-categories: 2 high-priority (behavioral), 3 medium (operational), 2 low
-(optional polish), and 1 explicit skip (Codex-specific infrastructure).
+mechanical port — it added **behavioral QoL improvements** and a **full
+install/audit/release framework** that should be bridged to OpenCode.
+
+The gap falls into 10 categories:
+- **P0** (3): behavioral AGENTS.md sections, 3 new skills, path-rule routing table
+- **P1** (3): operational docs, agent memory, root files
+- **P2** (1): skill body continuity integration
+- **P3** (1): install/uninstall + model tier injection framework
+- **P4** (1): audit framework (validators + fixtures)
+- **P5** (1): release tooling + manifest
 
 ---
 
-## 🔴 Category 1: AGENTS.md behavioral sections (10 missing)
+## 🔴 P0 — Category 1: AGENTS.md behavioral sections (10 missing)
 
 The OpenCode `AGENTS.md` is 42 lines (tech stack + collaboration protocol +
 start note). The Codex `AGENTS.md` is 173 lines with these **additional
@@ -33,18 +39,15 @@ sections** that drive agent behavior at runtime:
 | **File Lifecycle** | Track vs ignore policy; anti-redundancy (AGENTS.md = hot path only; path-rules = discipline; long procedures in docs); pause audit checklist | No file-tracking discipline |
 | **Continuity Epilogue** | After each work unit: summarize → surface owed verification → recommend next → suggest handoff | No post-task continuity |
 | **Available Role Agents** | Organized agent roster by tier (leadership / leads / design-content / engineering-QA-ops / engine) | Agents not discoverable from AGENTS.md |
-| **Path-Scoped Instructions** | Detailed table mapping each path glob to its rule file(s), including base + specific layering (e.g. `src/**` → `source-code.md`, `src/gameplay/**` → `source-code.md` + `gameplay-code.md`) | Path rules less discoverable |
+| **Path-Scoped Instructions** | Routing table (see Category 7) | Path rules invisible to agents |
 
-**Plan:** Rewrite `AGENTS.md` to incorporate all 10 sections, adapted for
+**Plan:** Rewrite `AGENTS.md` to incorporate all sections, adapted for
 OpenCode (`/resume-from-handoff` instead of `$resume-from-handoff`,
 `.opencode/` paths, `opencode.json` instructions mechanism).
 
 ---
 
-## 🔴 Category 2: 3 new skills missing
-
-The Codex port added 4 new skills. OpenCode has 0 of them (studio-status
-exists as a command wrapper but lacks the skill body with the same contract):
+## 🔴 P0 — Category 2: 3 new skills missing
 
 | Skill | Lines | Purpose |
 |---|---|---|
@@ -53,10 +56,7 @@ exists as a command wrapper but lacks the skill body with the same contract):
 | **`resume-from-handoff`** | 223 | Read-side: turns handoff into oriented prioritized plan. Steps: handle missing → read canonical state → apply vertical-slice forcing → "you are here" map → synthesize worklist by lane → surface blockers/gates → present resume briefing → structured work-item choice via `question` tool. |
 
 The 4th Codex-new skill, `studio-status`, already exists in OpenCode as a
-command (`.opencode/commands/studio-status.md`), but not as a full skill. The
-Codex version also has a `studio-status-on-start.sh` hook for session-start
-status injection — OpenCode's `/studio-status` is on-demand only (documented
-gap).
+command wrapper. A full skill body is optional (Category 8).
 
 **Plan:** Port all 3 skills to `.opencode/skills/` + matching
 `.opencode/commands/` wrappers. Adapt:
@@ -68,159 +68,239 @@ gap).
 
 ---
 
-## 🟡 Category 3: 3 new operational docs missing
+## 🔴 P0 — Category 3: Path-rule routing table (FUNCTIONAL GAP — was Cat 7)
 
-These docs are the **design contract** that the new skills and AGENTS.md
-sections reference:
+**This was reclassified from "optional" to a functional gap after
+investigation.** During the audit, I discovered that OpenCode's AGENTS.md
+tree-walking goes **up from the session CWD to the worktree root** — it does
+NOT discover nested `AGENTS.md` files in subdirectories below the CWD.
+
+Verified empirically via `opencode debug config`:
+
+```
+Instructions actually loaded:     6 files (all in .opencode/docs/)
+Nested AGENTS.md files on disk:  16 files (src/gameplay/AGENTS.md, design/gdd/AGENTS.md, etc.)
+Nested AGENTS.md in instructions: NONE
+```
+
+The 11 path-scoped AGENTS.md files created during the initial port
+(`src/gameplay/AGENTS.md`, `design/gdd/AGENTS.md`, etc.) are **on disk but
+invisible to agents**. When an agent edits `src/gameplay/combat.gd`, it never
+sees the gameplay-code rules.
+
+This is the same problem the Codex port solved with its AGENTS.md routing
+table. Neither Codex nor OpenCode auto-discovers path-scoped rules based on
+the file being edited — the agent has to be *told* to read them.
+
+**Plan:** Add a routing table to root `AGENTS.md` (which IS auto-loaded) that
+tells agents which nested AGENTS.md to read before editing matching paths:
+
+```markdown
+## Path-Scoped Instructions
+
+Before creating or editing files matching a path below, read the listed
+AGENTS.md file(s) with your Read tool.
+
+| Path | Rule file(s) |
+| ---- | ---- |
+| src/** | src/AGENTS.md |
+| src/gameplay/** | src/AGENTS.md, src/gameplay/AGENTS.md |
+| src/core/** | src/AGENTS.md, src/core/AGENTS.md |
+| src/ai/** | src/AGENTS.md, src/ai/AGENTS.md |
+| src/networking/** | src/AGENTS.md, src/networking/AGENTS.md |
+| src/ui/** | src/AGENTS.md, src/ui/AGENTS.md |
+| design/** | design/AGENTS.md |
+| design/gdd/** | design/AGENTS.md, design/gdd/AGENTS.md |
+| design/narrative/** | design/AGENTS.md, design/narrative/AGENTS.md |
+| docs/** | docs/AGENTS.md |
+| assets/data/** | assets/data/AGENTS.md |
+| assets/shaders/** | assets/shaders/AGENTS.md |
+| tests/** | tests/AGENTS.md |
+| prototypes/** | prototypes/AGENTS.md |
+| tools/** | tools/AGENTS.md (new — see below) |
+```
+
+Also add `tools/AGENTS.md` (new path coverage the Codex port introduced that
+neither upstream nor the OpenCode port has).
+
+This routing table is part of the P0 AGENTS.md rewrite (Category 1), not a
+separate phase.
+
+---
+
+## 🟡 P1 — Category 4: 3 new operational docs
 
 | Doc | Lines | Content |
 |---|---|---|
-| **`verification-integrity.md`** | 51 | Hard verification rules (never claim unverified), evidence labels (`verified this turn` / `file-reported` / `blocked` / `not run`), CI-read handling (open concrete run, confirm step, quote key line), incident examples, 5-step recovery procedure |
-| **`session-continuity.md`** | 58 | File roles (active.md = live checkpoint, session-handoff.md = canonical resume, session-archive.md = historical only, src/README.md = slice history), pause/resume procedures, context thresholds (50% bounded reads, 60-70% compact/handoff, >70% avoid broad work), 3 handoff depth tiers |
-| **`file-lifecycle.md`** | 44 | Track vs ignore vs keep-local policy, anti-redundancy (AGENTS.md = hot path only; path-rules = discipline; long procedures in docs), pause audit checklist (scope adherence, temp files untracked, verification labels accurate, next-action discoverable, fresh-session readability) |
+| **`verification-integrity.md`** | 51 | Hard verification rules, evidence labels (`verified this turn` / `file-reported` / `blocked` / `not run`), CI-read handling, incident examples, 5-step recovery procedure |
+| **`session-continuity.md`** | 58 | File roles (active.md / session-handoff.md / session-archive.md / src/README.md), pause/resume procedures, context thresholds (50% / 60-70% / >70%), 3 handoff depth tiers |
+| **`file-lifecycle.md`** | 44 | Track vs ignore policy, anti-redundancy, pause audit checklist |
 
-**Plan:** Port all 3 to `.opencode/docs/`, adapting `.codex/` → `.opencode/`
-paths and `$skill-name` → `/skill-name`. Add all 3 to the `instructions` array
-in `opencode.json` so they're globally loaded for every agent.
-
----
-
-## 🟡 Category 4: Agent memory expansion (1 → 17)
-
-The OpenCode port has 1 agent-memory file (lead-programmer, with real notes).
-The Codex port has **17** — one for every agent that had `memory: project` or
-`memory: user` in upstream:
-
-```
-art-director, audio-director, creative-director, economy-designer,
-game-designer, lead-programmer, level-designer, localization-lead,
-narrative-director, performance-analyst, producer, qa-lead,
-systems-designer, technical-director, ux-designer, world-builder, writer
-```
-
-Each MEMORY.md has:
-- A "Memory Contract" stating the agent must read this file before role work
-  and must NOT write global Codex/OpenCode memories.
-- A "Durable Notes" section (stub for project-specific rulings to be added
-  over time).
-
-**Plan:** Create 16 new `MEMORY.md` files in `.opencode/agent-memory/`. The
-existing lead-programmer one stays as-is (already has real notes). Copy the
-Codex contract text, adapting "Codex" → "OpenCode" and `.codex/` → `.opencode/`.
+**Plan:** Port all 3 to `.opencode/docs/`, adapting paths. Add all 3 to the
+`instructions` array in `opencode.json` so they're globally loaded.
 
 ---
 
-## 🟡 Category 5: Production state files & root docs
+## 🟡 P1 — Category 5: Agent memory expansion (1 → 17)
 
-**Missing production concepts (referenced by the 3 new skills):**
-- `production/session-handoff.md` — canonical resume narrative (created by
-  `/handoff`, read by `/resume-from-handoff`)
-- `production/session-archive.md` — historical handoff rotation target
-- `production/test-evidence/latest.md` — latest test evidence pointer
+The OpenCode port has 1 agent-memory file (lead-programmer). The Codex port
+has **17** — one for every agent that had `memory: project` or `memory: user`
+in upstream. The `memory:` frontmatter was a Claude Code platform feature
+(Claude CLI managed storage); Codex emulated it with file-based contracts
+(agent instructions say "read this file before role work"). OpenCode also
+lacks a native agent-memory mechanism, so the same emulation applies.
 
-These are created on demand by the skills; only `.gitkeep` placeholders are
-needed for directory structure.
+The 16 new files are **empty stubs** — a Memory Contract + Durable Notes
+placeholder. Their value is structural: a defined landing zone for
+role-specific rulings to accumulate over time. They pay off slowly as a real
+game project evolves.
 
-**Missing root files:**
-- `CHANGELOG.md` — version history. Codex has v0.1.0 → v0.3.0 documenting
-  port milestones. OpenCode should have an equivalent starting at its initial
-  commit.
-- `ATTRIBUTION.md` — upstream attribution + coexistence constraints. States
-  the port is pinned to upstream commit `984023d`, keeps upstream MIT license,
-  and does not modify `.claude/` or `CLAUDE.md` (adapted: does not ship
-  `.claude/` at all).
-
-**Plan:**
-- Add `CHANGELOG.md` with initial entry documenting the OpenCode port.
-- Add `ATTRIBUTION.md` adapted for OpenCode.
-- The production files are created by the skills; no static files needed
-  beyond existing `.gitkeep`.
+**Plan:** Create 16 new `MEMORY.md` files in `.opencode/agent-memory/`. Copy
+the Codex contract text, adapting "Codex" → "OpenCode" and `.codex/` →
+`.opencode/`.
 
 ---
 
-## 🟡 Category 6: Modified skill bodies (continuity integration)
+## 🟡 P1 — Category 6: Root docs (CHANGELOG + ATTRIBUTION)
 
-The Codex port modified 5+ skill bodies to integrate the continuity system.
-After porting the 3 new skills, these skill bodies need the same updates:
+- `CHANGELOG.md` — version history documenting port milestones
+- `ATTRIBUTION.md` — upstream attribution + coexistence constraints
+- `production/session-handoff.md` and `production/session-archive.md` —
+  created on demand by the new skills; only `.gitkeep` needed now
+
+**Plan:** Add both root files adapted for OpenCode.
+
+---
+
+## 🟡 P2 — Category 7: Skill body continuity integration
+
+After porting the 3 new skills, update closing sections of 5 existing skills:
 
 | Skill | Change |
 |---|---|
-| `gate-check` | Phase 7: append `/studio-next` routing after gate verdict instead of static menu |
-| `code-review` | Phase 9: suggest `/handoff` when session state should be preserved; route to `/studio-next` |
+| `gate-check` | Phase 7: append `/studio-next` routing after gate verdict |
+| `code-review` | Phase 9: suggest `/handoff`; route to `/studio-next` |
 | `story-done` | Phase 8: append `/studio-next` routing; suggest `/handoff` |
 | `help` | Step 7: route to `/studio-next` for post-task continuity |
 | `start` | Closing: mention `/studio-next` as the continuity router |
 
-The substantive phase/checklist content of these skills remains faithful to
-upstream — the changes are to closing/routing sections only.
-
-**Plan:** After porting the 3 new skills, update the closing sections of these
-5 skills. Apply `opencode` path conventions (`.opencode/docs/` not
-`.codex/docs/`, `/skill-name` not `$skill-name`).
+Substantive phase/checklist content stays faithful to upstream — changes are
+to closing/routing sections only.
 
 ---
 
-## 🟢 Category 7: Path-rules restructure (optional improvement)
+## 🟢 P3 — Category 8: Install/uninstall + model tier injection
 
-The Codex port restructured path rules into
-`.codex/instructions/path-rules/` (15 files) with:
-- **`source-code.md`** as a base rule loaded for ALL `src/**` edits, plus
-  more specific sub-rules layered on top
-- **`tool-code.md`** (new — rules for `tools/` directory)
-- **`design-directory.md`** and **`docs-directory.md`** as base rules for
-  those trees
-- Separation of path-rules (prose, in `instructions/path-rules/`) from
-  command-policy (in `rules/*.rules`)
+**This is the key OpenCode differentiator.** Unlike upstream Claude Code
+(hardcoded `opus`/`sonnet`/`haiku`) and Codex (hardcoded `gpt-5.5`/
+`gpt-5.4`/`gpt-5.4-mini`), the OpenCode port is **truly model-agnostic** —
+`model` is unset on all 49 agents, with `metadata.ccgs_tier` as the routing
+key. The install script lets users choose their models at install time.
 
-The OpenCode port has 11 nested `AGENTS.md` files (one per rule path) but:
-- No base-rule layering (`src/AGENTS.md` exists but doesn't explicitly say
-  "also load the more specific rule for your subdirectory")
-- No `tools/` coverage
-- Path rules and command policy are both in the same mechanism
+### Install flow
 
-**Plan:** Optional. Could enhance `src/AGENTS.md` to reference sub-rule
-AGENTS.md files explicitly. Add `tools/AGENTS.md`. Low priority — the nested
-AGENTS.md approach already works via OpenCode's tree-walking discovery.
+```bash
+# Clone the template
+git clone https://github.com/Cipher-85/opencode-game-studios.git my-game
+cd my-game
+
+# Run the installer (interactive)
+bash .opencode/install.sh
+
+# Or non-interactive
+bash .opencode/install.sh \
+  --tier-opus zai-coding-plan/glm-5.2-max \
+  --tier-sonnet zai-coding-plan/glm-5.2 \
+  --tier-haiku zai-coding-plan/glm-5.2 \
+  --primary zai-coding-plan/glm-5.2-max
+```
+
+Interactive prompts:
+1. Tier 1 — Directors (3 agents): `opus` tier → user enters model ID
+2. Tier 2 — Leads + Specialists (44 agents): `sonnet` tier → user enters model ID
+3. Tier 3 — Light agents (2: community-manager, devops-engineer): `haiku` tier → user enters model ID
+4. Primary agent (build): defaults to Tier 1 choice
+
+**Hard validation:** each model ID is checked against `opencode models`
+output. Unknown models are rejected (prevents typos, ensures provider is
+configured).
+
+### What the installer modifies
+
+1. Each `.opencode/agents/*.md`: reads `metadata.ccgs_tier`, injects
+   `model: <provider/model-id>` into frontmatter
+2. `opencode.json`: sets `model` field (primary agent default)
+3. `.opencode/models.json`: generated tier→model mapping (for reconfiguration)
+4. `.opencode/install-state.json`: tracks installed files + model mapping (for clean uninstall)
+
+### Two install modes
+
+- **Clone-and-configure** (in-place): user cloned this repo as their game
+  project. Script configures models + validates. No file copying.
+- **Install-into-existing** (target path): user has an existing game repo.
+  Script copies `.opencode/`, `AGENTS.md`, docs, etc. into target, then
+  configures models. Uses manifest for file tracking.
+
+### Codex tooling to port (full suite)
+
+| Codex file | OpenCode target | Adaptation |
+|---|---|---|
+| `install.sh` | `.opencode/install.sh` | New: model tier injection + hard validation |
+| `uninstall.sh` | `.opencode/uninstall.sh` | Restore model-agnostic state + remove assets |
+| `lib/install.sh` (963 lines) | `.opencode/lib/install.sh` | Coexistence detection, patch modes, backup, AGENTS.md marker-block (`<!-- BEGIN/END CCGS OPENCODE PORT -->`), `.gitignore` allowlist |
+| `lib/hooks.sh` | `.opencode/lib/hooks.sh` | Root discovery, payload parsing — largely portable |
+| `lib/agents.sh` | `.opencode/lib/agents.sh` | Collision check (OpenCode built-ins: `build`, `plan`, `general`, `explore`) |
+| `lib/state.sh` | `.opencode/lib/state.sh` | Direct port |
+| `lib/validate.sh` | `.opencode/lib/validate.sh` | Direct port |
+| **(new)** `lib/models.sh` | `.opencode/lib/models.sh` | Model validation + injection + stripping |
+
+### Uninstall
+
+Restores model-agnostic state: removes injected `model:` fields from agent
+frontmatter (using install-state to know which were injected vs user-added),
+removes deployed assets if installed-into-target, cleans `.gitignore`
+allowlist entries.
 
 ---
 
-## 🟢 Category 8: Studio-status skill + hook
+## 🟢 P4 — Category 9: Audit framework (validators + fixtures)
 
-The Codex port has:
-- A `studio-status` **skill** (30 lines) that reads `production/stage.txt`,
-  `production/review-mode.txt`, `production/session-state/active.md` and
-  renders a status breadcrumb.
-- A `studio-status-on-start.sh` **hook** (482 bytes) that runs at SessionStart
-  to print the status, since Codex lacks a custom TUI footer item.
-
-The OpenCode port has a `/studio-status` **command** only (runs statusline.sh
-on demand). It does not have the skill body or the session-start hook.
-
-**Plan:** Consider porting the `studio-status` skill body for consistency
-with the other 3 new skills. The session-start hook is less valuable in
-OpenCode (which has `session.created` event support via the plugin, and the
-desktop app sends notifications). Low priority.
-
----
-
-## ⚪ Category 9: Codex-specific infrastructure (NOT bridging)
-
-These are Codex-specific and either don't apply to OpenCode or need radical
-adaptation:
-
-| Item | Why skip |
+| Codex validator | OpenCode adaptation |
 |---|---|
-| `.codex/config.toml`, `models.toml` | Codex-specific config; OpenCode uses `opencode.json` |
-| `.codex/agents/*.toml` | TOML agent format; OpenCode uses markdown agents with YAML frontmatter |
-| `.codex/hooks.json` | Codex hook wiring via `bash -lc` discovery; OpenCode uses `ccgs-hooks.js` plugin |
-| `.codex/rules/settings.rules` | Codex command-policy format (`prefix_rule`); OpenCode uses `opencode.json` permission object |
-| `install.sh` / `uninstall.sh` | Designed for multi-target Codex installs with coexistence detection; OpenCode projects are self-contained |
-| `release.sh` | Codex-specific `codex-vX.Y.Z` tag governance; OpenCode can use standard git tags |
-| `manifest/` (3 JSON files) | SHA256 inventory for coexistence tracking and incremental patching; overkill for self-contained OpenCode projects |
-| `lib/validate_*.py` | Python validators for Codex's audit framework (manifest, runtime, hooks, install, rules, release, smoke); would need radical rewrite for OpenCode |
-| `audit.sh` | Dispatcher for Codex validators |
-| `studio-status-on-start.sh` | Codex-specific session-start hook |
-| `.codex/tests/fixtures/` | Codex-specific test fixtures for the audit framework |
+| `lib/validate_manifest.py` | Rewrite for OpenCode paths (`.opencode/` not `.codex/`, `.md` agents not `.toml`) |
+| `lib/validate_runtime.py` | Rewrite: check 49 `.md` agents for required frontmatter (`description`, `mode`, `steps`, `permission`, `metadata.ccgs_tier`); reject unsupported fields; 73 skills for `name`/`description`/`metadata`; no `.claude/`/`CLAUDE.md`/`AskUserQuestion` in runtime |
+| `lib/validate_hooks.py` | Adapt: validate `ccgs-hooks.js` loads, test shell scripts with fixtures |
+| `lib/validate_install.py` | Adapt: validate install-state.json, deployed path ownership |
+| `lib/validate_rules.py` | Rewrite: validate `opencode.json` (JSON schema, permission format, instructions exist) instead of `config.toml`/`.rules` |
+| `lib/validate_release.py` | Adapt: `opencode-vX.Y.Z` tags |
+| `lib/validate_smoke.py` | Adapt: negative fixtures for OpenCode format |
+| `audit.sh` | Direct port (dispatcher) |
+| `tests/fixtures/` | `.opencode/tests/fixtures/` — hook payloads, coexistence fixtures, negative fixtures |
+
+---
+
+## 🟢 P5 — Category 10: Release tooling + manifest
+
+| Item | OpenCode target |
+|---|---|
+| `release.sh` | `.opencode/release.sh` — `current`/`bump`/`check`/`publish` with `opencode-vX.Y.Z` tags |
+| `VERSION` | `.opencode/VERSION` |
+| `manifest/upstream-assets.json` | `.opencode/manifest/upstream-assets.json` — 417-row source inventory |
+| `manifest/expected-targets.json` | `.opencode/manifest/expected-targets.json` — auto-generated at release time from repo tree |
+| `manifest/installed-files.json` | `.opencode/manifest/installed-files.json` — deployed path ownership |
+| `backups/` | `.opencode/backups/` — pre-overwrite backups |
+
+Manifest auto-generated at release time (via `release.sh`) rather than
+maintained manually — avoids drift between manifest and actual repo state.
+
+---
+
+## 🟢 P3 (optional) — Category 11: Studio-status skill + hook
+
+The Codex port has a `studio-status` skill (30 lines) and a
+`studio-status-on-start.sh` session-start hook. OpenCode already has the
+`/studio-status` command. Porting the skill body is optional consistency;
+the session-start hook is lower value (OpenCode's desktop app auto-notifies).
 
 ---
 
@@ -228,25 +308,30 @@ adaptation:
 
 | Priority | Category | Items | Effort |
 |---|---|---|---|
-| 🔴 **P0** | 1 | Rewrite `AGENTS.md` with 10 behavioral sections | Medium |
-| 🔴 **P0** | 2 | Port 3 new skills (`studio-next`, `handoff`, `resume-from-handoff`) + command wrappers | Medium |
-| 🟡 **P1** | 3 | Port 3 new docs (`verification-integrity`, `session-continuity`, `file-lifecycle`) + add to `instructions` | Small |
-| 🟡 **P1** | 4 | Create 16 agent-memory MEMORY.md files | Small |
-| 🟡 **P1** | 5 | Add `CHANGELOG.md` + `ATTRIBUTION.md` | Small |
-| 🟡 **P2** | 6 | Update 5 skill bodies for continuity integration (`gate-check`, `code-review`, `story-done`, `help`, `start`) | Small |
-| 🟢 **P3** | 7 | Add `tools/AGENTS.md` path rule; enhance base-rule layering | Trivial |
-| 🟢 **P3** | 8 | Port `studio-status` skill body for consistency | Trivial |
-| ⚪ Skip | 9 | Codex-specific infrastructure | — |
+| 🔴 **P0** | 1 | Rewrite `AGENTS.md` with behavioral sections + routing table | Medium |
+| 🔴 **P0** | 2 | Port 3 new skills + command wrappers | Medium |
+| 🔴 **P0** | 3 | Path-rule routing table in AGENTS.md (part of Cat 1 rewrite) | Small |
+| 🟡 **P1** | 4 | Port 3 new docs + add to `instructions` | Small |
+| 🟡 **P1** | 5 | Create 16 agent-memory MEMORY.md files | Small |
+| 🟡 **P1** | 6 | Add `CHANGELOG.md` + `ATTRIBUTION.md` | Small |
+| 🟡 **P2** | 7 | Update 5 skill bodies for continuity integration | Small |
+| 🟢 **P3** | 8 | Install/uninstall + model tier injection framework | Large |
+| 🟢 **P4** | 9 | Audit framework (validators + fixtures) | Large |
+| 🟢 **P5** | 10 | Release tooling + manifest | Medium |
+| 🟢 **P3** | 11 | Studio-status skill body (optional) | Trivial |
 
-### Suggested implementation order
+### Implementation order
 
-1. **P0 — AGENTS.md rewrite** (the behavioral foundation everything else references)
-2. **P0 — 3 new skills + commands** (the operational tools the AGENTS.md sections reference)
-3. **P1 — 3 new docs** (the design contracts the skills enforce)
-4. **P1 — 16 agent-memory files** (quick scripted creation)
-5. **P1 — CHANGELOG + ATTRIBUTION** (quick)
-6. **P2 — skill body updates** (closing-section integration with new skills)
-7. **P3 — optional polish** (tools rule, studio-status skill)
+1. **P0** — AGENTS.md rewrite (includes routing table) + 3 new skills + commands
+2. **P1** — 3 new docs + 16 agent-memory + CHANGELOG/ATTRIBUTION
+3. **P2** — Skill body continuity integration
+4. **P3** — Install/uninstall framework + model tier injection
+5. **P4** — Audit framework (validators, fixtures, audit.sh)
+6. **P5** — Release tooling + manifest + VERSION
+
+P0-P2 are content changes (behavioral docs, skills, memory stubs).
+P3-P5 are infrastructure (install scripts, validators, release tooling).
+P3 depends on P0-P1 being finalized (the installer deploys the content).
 
 ### Key adaptation rules (Codex → OpenCode)
 
@@ -257,9 +342,24 @@ adaptation:
 | `.codex/agents/*.toml` | `.opencode/agents/*.md` |
 | `.agents/skills/` | `.opencode/skills/` |
 | `request_user_input` | `question` |
-| `.codex/instructions/path-rules/` | nested `AGENTS.md` (already in place) |
+| `.codex/instructions/path-rules/` | Routing table in root AGENTS.md + nested AGENTS.md |
 | `config.toml` | `opencode.json` |
-| `apply_patch` | `write` / `edit` / `apply_patch` |
+| `models.toml` (hardcoded tiers) | `.opencode/models.json` (user-chosen at install time) |
+| `codex-vX.Y.Z` tags | `opencode-vX.Y.Z` tags |
+| `<!-- BEGIN/END CCGS CODEX PORT -->` | `<!-- BEGIN/END CCGS OPENCODE PORT -->` |
+| Codex built-ins: `default`, `worker`, `explorer` | OpenCode built-ins: `build`, `plan`, `general`, `explore` |
+
+### Model tier structure (3 tiers)
+
+| Tier | `ccgs_tier` | Agents | Count |
+|---|---|---|---|
+| Directors | `opus` | creative-director, technical-director, producer | 3 |
+| Leads + Specialists | `sonnet` | game-designer, lead-programmer, art-director, audio-director, narrative-director, qa-lead, release-manager, localization-lead, systems-designer, level-designer, economy-designer, technical-artist, sound-designer, writer, world-builder, ux-designer, prototyper, performance-analyst, devops-engineer, analytics-engineer, security-engineer, qa-tester, accessibility-specialist, live-ops-designer, community-manager, gameplay-programmer, engine-programmer, ai-programmer, network-programmer, tools-programmer, ui-programmer, godot-specialist, godot-gdscript-specialist, godot-csharp-specialist, godot-shader-specialist, godot-gdextension-specialist, unity-specialist, unity-ui-specialist, unity-shader-specialist, unity-dots-specialist, unity-addressables-specialist, unreal-specialist, ue-blueprint-specialist, ue-gas-specialist, ue-replication-specialist, ue-umg-specialist | 44 |
+| Light agents | `haiku` | community-manager, devops-engineer | 2 |
+
+> Note: `community-manager` and `devops-engineer` are the only `haiku`-tier
+> agents. In practice many users will use the same model for sonnet + haiku
+> tiers. The installer supports this — just enter the same model ID for both.
 
 ---
 
@@ -275,5 +375,14 @@ adaptation:
 | `.codex/docs/session-continuity.md` (58 lines) | Source for continuity doc |
 | `.codex/docs/file-lifecycle.md` (44 lines) | Source for lifecycle doc |
 | `.codex/agent-memory/*/MEMORY.md` (17 dirs) | Source for 16 new memory files |
+| `.codex/instructions/path-rules/` (15 files) | Reference for routing table content |
 | `ATTRIBUTION.md` (21 lines) | Source for attribution doc |
 | `CHANGELOG.md` (50 lines) | Source for changelog format |
+| `.codex/install.sh` + `lib/install.sh` (1049 lines total) | Source for install framework |
+| `.codex/uninstall.sh` (41 lines) | Source for uninstall |
+| `.codex/lib/validate_*.py` (7 files, ~55K total) | Source for audit framework |
+| `.codex/audit.sh` (60 lines) | Source for audit dispatcher |
+| `.codex/release.sh` (393 lines) | Source for release tooling |
+| `.codex/manifest/*.json` (3 files) | Source for manifest format |
+| `.codex/models.toml` (11 lines) | Reference for tier mapping (OpenCode uses user-chosen) |
+| `.codex/tests/fixtures/` | Source for test fixtures |
