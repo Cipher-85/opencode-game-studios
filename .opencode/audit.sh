@@ -8,6 +8,7 @@
 #   all          Run all validators (default)
 #   agents       Validate agent files
 #   skills       Validate skill files
+#   closeout     Check closeout-routing contract on completion skills
 #   runtime      Check for stale references
 #   config       Validate opencode.json
 #   hooks        Test hook scripts
@@ -24,7 +25,7 @@ command="${1:-all}"
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --root) root="$(cd "$2" && pwd -P)"; shift 2 ;;
-    all|agents|skills|runtime|config|hooks|smoke|release) command="$1"; shift ;;
+    all|agents|skills|runtime|config|hooks|smoke|release|closeout) command="$1"; shift ;;
     *) shift ;;
   esac
 done
@@ -95,6 +96,67 @@ sys.exit(0)
 " 2>/dev/null && pass "$name" || fail "$name (invalid)"
   done
   printf '  %d skills checked\n' "$count"
+}
+
+run_closeout() {
+  printf '\n── Closeout Routing ────────────────────────────────────────\n'
+  local -a skills=(
+    architecture-decision architecture-review art-bible asset-spec brainstorm
+    code-review consistency-check design-system dev-story gate-check help
+    map-systems project-stage-detect quick-design smoke-check story-done
+    story-readiness team-qa ux-design
+  )
+  local -a markers=(
+    "Verdict: **COMPLETE**"
+    "Verdict: COMPLETE"
+    "**Verdict: COMPLETE**"
+    "## Recommended Next Steps"
+  )
+  local -a required=(
+    "Session Worklist"
+    "production/session-state/active.md"
+    "completed work"
+    "owed verification"
+    "numbered next-action prompt"
+    "Next action:"
+    "1. (Recommended)"
+    "(Recommended)"
+  )
+  local -a forbidden=(
+    "one recommended next action"
+    "numbered choice set"
+  )
+  local checked=0
+  for s in "${skills[@]}"; do
+    local f="$root/.opencode/skills/$s/SKILL.md"
+    [ -f "$f" ] || { fail "$s (no SKILL.md)"; continue; }
+    checked=$((checked + 1))
+    # Trigger only when the skill declares a closeout marker.
+    local has_marker=0 m
+    for m in "${markers[@]}"; do
+      if rg -q -F "$m" "$f" 2>/dev/null; then has_marker=1; break; fi
+    done
+    if [ "$has_marker" -eq 0 ]; then
+      pass "$s (no closeout marker; skipped)"
+      continue
+    fi
+    local missing=() bad=()
+    for m in "${required[@]}"; do
+      if ! rg -q -F "$m" "$f" 2>/dev/null; then missing+=("$m"); fi
+    done
+    for m in "${forbidden[@]}"; do
+      if rg -q -F "$m" "$f" 2>/dev/null; then bad+=("$m"); fi
+    done
+    if [ "${#missing[@]}" -eq 0 ] && [ "${#bad[@]}" -eq 0 ]; then
+      pass "$s (closeout routing complete)"
+    else
+      local detail=""
+      [ "${#missing[@]}" -gt 0 ] && detail+=" missing: ${missing[*]}"
+      [ "${#bad[@]}" -gt 0 ] && detail+=" forbidden-present: ${bad[*]}"
+      fail "$s (closeout contract)$detail"
+    fi
+  done
+  printf '  %d closeout skills checked\n' "$checked"
 }
 
 run_runtime() {
@@ -241,19 +303,21 @@ case "$command" in
   all)
     run_agents
     run_skills
+    run_closeout
     run_runtime
     run_config
     run_hooks
     run_smoke
     ;;
-  agents)  run_agents ;;
-  skills)  run_skills ;;
-  runtime) run_runtime ;;
-  config)  run_config ;;
-  hooks)   run_hooks ;;
-  smoke)   run_smoke ;;
-  release) run_release ;;
-  *) printf 'Unknown command: %s\nAvailable: all, agents, skills, runtime, config, hooks, smoke, release\n' "$command" >&2; exit 2 ;;
+  agents)   run_agents ;;
+  skills)   run_skills ;;
+  closeout) run_closeout ;;
+  runtime)  run_runtime ;;
+  config)   run_config ;;
+  hooks)    run_hooks ;;
+  smoke)    run_smoke ;;
+  release)  run_release ;;
+  *) printf 'Unknown command: %s\nAvailable: all, agents, skills, closeout, runtime, config, hooks, smoke, release\n' "$command" >&2; exit 2 ;;
 esac
 
 printf '\n── Result: %d error(s) ──\n' "$errors"

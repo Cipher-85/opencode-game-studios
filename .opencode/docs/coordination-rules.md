@@ -40,10 +40,30 @@ Spawned via `Task` within a single OpenCode session. Used by all `team-*` skills
 and orchestration skills. Subagents share the session's permission context, run
 sequentially or in parallel within the session, and return results to the parent.
 
+Explicit invocation of an OpenCode Game Studios skill authorizes only the
+subagent spawns declared by that skill's workflow for that run. This
+authorization is limited to delegation; normal approval rules still govern file
+writes, commits, pushes, branch changes, design decisions, game-feel or balance
+decisions, and any agent not named by the workflow.
+
 **When to spawn in parallel**: If two subagents' inputs are independent (neither
 needs the other's output to begin), spawn both Task calls simultaneously rather
 than waiting. Example: `/review-all-gdds` Phase 1 (consistency) and Phase 2
 (design theory) are independent — spawn both at the same time.
+
+**Review-mode check**: Before spawning any director or lead gate, resolve the
+active review mode using `.opencode/docs/director-gates.md`. `solo` skips all
+director gates, `lean` runs only PHASE-GATE director gates, and `full` runs
+declared gates normally.
+
+**Runtime fallback**: OpenCode's `Task` tool does not require per-spawn consent
+for agents already named by an invoked skill's workflow. If a surface still
+requires literal user consent before the first subagent spawn, ask one
+confirmation before spawning: "This skill declares [agents/gates]. May I spawn
+those role agents for this run?" If the user declines or delegation is
+unavailable, do not invent, summarize, or simulate specialist/director verdicts.
+Report the missing delegation as skipped or blocked, then continue only where
+the workflow allows a partial result.
 
 ### Agent Teams (experimental — opt-in)
 Multiple independent OpenCode *sessions* running simultaneously, coordinated
@@ -70,4 +90,5 @@ When an orchestration skill spawns multiple independent agents:
 1. Issue all independent Task calls before waiting for any result
 2. Collect all results before proceeding to dependent phases
 3. If any agent is BLOCKED, surface it immediately — do not silently skip
-4. Always produce a partial report if some agents complete and others block
+4. Never replace a blocked or skipped agent with an internal simulated verdict
+5. Always produce a partial report if some agents complete and others block

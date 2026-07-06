@@ -351,3 +351,21 @@ Every phase follows: **Identify → Confirm → Generate → Review → Approve 
 
 - Run `/asset-spec [next-context]` to continue speccing remaining systems, levels, or characters
 - Run `/asset-audit` to validate delivered assets against the written specs and identify gaps or mismatches
+
+
+## Closeout Contract
+
+Every final response from this skill must include completed work, verification
+run or owed verification, and next-lane routing. Read or refresh the
+`## Session Worklist` in `production/session-state/active.md` when present. End
+with a numbered next-action prompt using numeric format only, even when there is
+only one valid lane:
+
+```md
+Next action:
+1. (Recommended) [action label] - [brief reason / command]
+```
+
+If multiple lanes are viable, add more numbered options and keep exactly one
+`(Recommended)` option. The user can reply with `1`. Do not end with only a
+static command list.

@@ -243,3 +243,21 @@ After the final phase completes (sign-off report written or BLOCKED verdict reac
 ```
 <!-- QA RUN: [date] | Sprint: [sprint identifier or "ad-hoc"] | Verdict: [PASS/FAIL/CONCERNS] | Report: production/qa/qa-[date].md -->
 ```
+
+
+## Closeout Contract
+
+Every final response from this skill must include completed work, verification
+run or owed verification, and next-lane routing. Read or refresh the
+`## Session Worklist` in `production/session-state/active.md` when present. End
+with a numbered next-action prompt using numeric format only, even when there is
+only one valid lane:
+
+```md
+Next action:
+1. (Recommended) [action label] - [brief reason / command]
+```
+
+If multiple lanes are viable, add more numbered options and keep exactly one
+`(Recommended)` option. The user can reply with `1`. Do not end with only a
+static command list.

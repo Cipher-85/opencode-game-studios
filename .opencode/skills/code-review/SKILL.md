@@ -192,3 +192,21 @@ If an ARCHITECTURAL VIOLATION is found:
 After the review is complete and the user has chosen how to proceed, run
 `/studio-next` to recommend the single best next action. If session state should
 be preserved before pausing, suggest `/handoff`.
+
+
+## Closeout Contract
+
+Every final response from this skill must include completed work, verification
+run or owed verification, and next-lane routing. Read or refresh the
+`## Session Worklist` in `production/session-state/active.md` when present. End
+with a numbered next-action prompt using numeric format only, even when there is
+only one valid lane:
+
+```md
+Next action:
+1. (Recommended) [action label] - [brief reason / command]
+```
+
+If multiple lanes are viable, add more numbered options and keep exactly one
+`(Recommended)` option. The user can reply with `1`. Do not end with only a
+static command list.

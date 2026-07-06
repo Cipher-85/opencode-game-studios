@@ -324,3 +324,21 @@ Common blockers:
 - Run `/code-review [file1] [file2]` to review the implementation before closing the story
 - Run `/story-done [story-path]` to verify acceptance criteria and mark the story complete
 - After all sprint stories are done: run `/team-qa sprint` for the full QA cycle before advancing the project stage
+
+
+## Closeout Contract
+
+Every final response from this skill must include completed work, verification
+run or owed verification, and next-lane routing. Read or refresh the
+`## Session Worklist` in `production/session-state/active.md` when present. End
+with a numbered next-action prompt using numeric format only, even when there is
+only one valid lane:
+
+```md
+Next action:
+1. (Recommended) [action label] - [brief reason / command]
+```
+
+If multiple lanes are viable, add more numbered options and keep exactly one
+`(Recommended)` option. The user can reply with `1`. Do not end with only a
+static command list.

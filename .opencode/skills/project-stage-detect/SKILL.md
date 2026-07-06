@@ -110,6 +110,20 @@ Use template: `.opencode/docs/templates/project-stage-report.md`
 [Priority-ordered list based on stage and role]
 ```
 
+The final recommendation must be worklist-backed when possible. Include
+completed work, read or refresh the `## Session Worklist` in
+`production/session-state/active.md` when present, surface owed verification,
+and then end with a numbered next-action prompt using numeric format only, even
+when there is only one valid lane:
+
+```md
+Next action:
+1. (Recommended) [action label] - [brief reason / command]
+```
+
+If multiple lanes are viable, add more numbered options and keep exactly one
+`(Recommended)` option. The user can reply with `1`.
+
 ### 5. Role-Filtered Recommendations (Optional)
 
 If user provided a role argument (e.g., `/project-stage-detect programmer`):

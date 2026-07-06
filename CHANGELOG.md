@@ -1,5 +1,36 @@
 # Changelog
 
+## v0.3.0 - 2026-07-06
+
+Bridged Codex Game Studios v0.3.3 continuity-routing rework plus the v0.4.0
+numbered-closeout and v0.4.1 role-agent delegation contract into the
+OpenCode-native port.
+
+- Introduced the `## Session Worklist` and `## Phase Guard` routing cache in
+  `production/session-state/active.md`. Post-work recommendations and resume now
+  route through the live worklist instead of `/studio-next`.
+- Reworked `/resume-from-handoff` into the one-time session-entry compiler that
+  writes those two sections to `active.md`. Explicit invocation of
+  `/resume-from-handoff` now authorizes that single file write.
+- Deprecated `/studio-next` to a manual compatibility reference that points at
+  the saved worklist. Note: this reverses the v0.2.1 enhancement to
+  `/studio-next`, intentionally aligning with upstream v0.3.3.
+- Required numbered closeout on 21 completion skills and shared continuity docs:
+  final responses now end with a `Next action:` prompt and exactly one numeric
+  `(Recommended)` option, even when only one valid lane remains. Updated
+  `/quick-design`, `/project-stage-detect`, and `/resume-from-handoff` with
+  worklist-backed routing language.
+- Added a central Role-Agent Delegation Authorization contract to `AGENTS.md`,
+  `.opencode/docs/coordination-rules.md`, and `.opencode/docs/director-gates.md`
+  so explicit skill invocation authorizes only the declared role-agent spawns,
+  with review-mode filtering and a runtime fallback that never simulates a
+  skipped specialist or director verdict.
+- Extended `/skill-test` with a hard closeout-routing check and delegation
+  behavioral checks.
+- Translated the upstream `validate_runtime.py` CLOSEOUT enforcement into a new
+  `run_closeout` command in `.opencode/audit.sh` (run via `audit.sh closeout` or
+  as part of `audit.sh all`).
+
 ## v0.2.1 - 2026-07-05
 
 Bridged Codex Game Studios v0.3.1–v0.3.2 decision-prompt and handoff improvements

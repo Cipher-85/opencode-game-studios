@@ -26,8 +26,17 @@ verification-first implementation.
 - If no handoff exists, do not infer one from another doc. Route first-session
   setup to `/start`, broad orientation to `/help`, or full gap discovery to
   `/project-stage-detect`.
-- At wrap-up, keep `/studio-next` as the lightweight epilogue router and suggest
-  `/handoff` only when the current state should be durable for a future session.
+- At wrap-up, read or update the `## Session Worklist` in
+  `production/session-state/active.md`, surface owed verification, and present
+  the top valid lane as a numbered next-action prompt. Suggest `/handoff` only
+  when the current state should be durable for a future session.
+- Every discrete work-unit final response must close the loop: summarize
+  completed work, state verification run or owed verification, and end with a
+  numbered next-action prompt with exactly one `(Recommended)` option. Use this
+  format even when there is only one clear next action:
+  `Next action:` then `1. (Recommended) [action label] - [brief reason /
+  command]`. Base that next action on the `## Session Worklist` when
+  `production/session-state/active.md` exists. The user can reply with `1`.
 
 ## Available OpenCode Subagents
 
@@ -79,9 +88,34 @@ Question -> Options -> Decision -> Draft -> Approval.
 - The `/handoff` exception does not authorize design/game-feel/balance
   decisions, new source edits outside the continuity files, writes to undeclared
   files, branch switching, force-pushes, or `--no-verify` / amend workarounds.
+- `/resume-from-handoff` exception: explicit invocation of the OpenCode-native
+  `/resume-from-handoff` skill counts as user approval to write or overwrite
+  only `production/session-state/active.md` with the current session routing
+  cache. Do not pause mid-flow to ask for that file write.
+- The `/resume-from-handoff` exception does not authorize edits to handoff,
+  archive, source, design, or docs files; commits; pushes; branch changes;
+  builds; boot smoke; mutating `gh`; or additional file writes.
 - No commits without user instruction.
 
 See `docs/COLLABORATIVE-DESIGN-PRINCIPLE.md` for full protocol and examples.
+
+## Role-Agent Delegation Authorization
+
+Explicit invocation of an OpenCode Game Studios skill whose workflow declares
+role-agent delegation authorizes only the role-agent spawns named by that
+workflow for the current run. The authorization covers spawning and receiving
+role-agent analysis; it does not authorize file writes, commits, pushes, branch
+changes, design decisions, game-feel or balance decisions, undeclared agents, or
+edits outside the invoked skill's normal approval flow.
+
+Before spawning any director or lead gate, resolve the active review mode as
+declared by `.opencode/docs/director-gates.md`. `solo` skips all director gates;
+`lean` skips non-PHASE-GATE director gates; `full` runs declared gates normally.
+OpenCode's `Task` tool does not require per-spawn consent for agents already
+named by an invoked skill's workflow, but file writes and other gated actions
+still follow the Collaboration Boundary above. If delegation is unavailable or
+the user declines a declared spawn, do not simulate specialist or director
+verdicts; report the skipped delegation as a limitation.
 
 ## Low-Friction Decision Prompts
 
@@ -181,13 +215,16 @@ For code, tests, and tools:
 
 ## Continuity Epilogue
 
-After each discrete work unit, apply this mentally or run `/studio-next`:
+After each discrete work unit, apply this mentally (or run `/studio-next` only as
+a deprecated manual reference):
 
 1. Summarize what was completed.
 2. Surface owed verification.
-3. List the viable next actions from handoff, session, sprint, stage, workflow,
-   and slice state, with one clearly marked `(Recommended)`.
-4. Suggest `/handoff` when session state should be preserved.
+3. Read or refresh the `## Session Worklist` and `## Phase Guard` from handoff,
+   session, sprint, stage, workflow, and slice state.
+4. Present the top valid lane as a numbered next-action prompt with exactly one
+   `(Recommended)` option, even when only one real lane remains.
+5. Suggest `/handoff` when session state should be preserved.
 
 Read `.opencode/docs/session-continuity.md` and
 `.opencode/docs/context-management.md` for full pause/resume guidance.

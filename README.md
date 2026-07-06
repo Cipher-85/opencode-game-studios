@@ -13,7 +13,7 @@
   <a href=".opencode/skills"><img src="https://img.shields.io/badge/skills-77-green" alt="77 Skills"></a>
   <a href=".opencode/commands"><img src="https://img.shields.io/badge/commands-77-yellow" alt="77 Commands"></a>
   <a href=".opencode/hooks"><img src="https://img.shields.io/badge/hooks-12-orange" alt="12 Hooks"></a>
-  <a href=".opencode/VERSION"><img src="https://img.shields.io/badge/version-0.2.0-blue" alt="v0.2.0"></a>
+  <a href=".opencode/VERSION"><img src="https://img.shields.io/badge/version-0.3.0-blue" alt="v0.3.0"></a>
   <a href="https://opencode.ai"><img src="https://img.shields.io/badge/built%20for-OpenCode-f5f5f5" alt="Built for OpenCode"></a>
 </p>
 
@@ -69,9 +69,18 @@ first brainstorm to launch.
 
 ## Current Status
 
-Package version: `0.2.0` (see [`.opencode/VERSION`](.opencode/VERSION)).
+Package version: `0.3.0` (see [`.opencode/VERSION`](.opencode/VERSION)).
 
 This release includes:
+- Session Worklist routing cache (`## Session Worklist` + `## Phase Guard` in
+  `production/session-state/active.md`); `/resume-from-handoff` compiles it,
+  post-work closeouts read it, and `/studio-next` is now a deprecated manual
+  reference
+- Numbered closeout on completion skills: final responses end with a
+  `Next action:` prompt and exactly one numeric `(Recommended)` option
+- Central role-agent delegation contract: explicit skill invocation authorizes
+  only the declared spawns, with review-mode filtering and no simulated
+  specialist/director verdicts
 - Full behavioral alignment with upstream CCGS (Startup Contract, Resume &
   Wrap-Up Routing, Verification Integrity, Vertical-Slice Forcing Function,
   Code-Turn Discipline, Workflow Gates, File Lifecycle, Continuity Epilogue)
@@ -355,7 +364,7 @@ opencode.json                        # Permissions, plugin ref, instruction file
   uninstall.sh                       # Coexistence-aware uninstaller
   audit.sh                           # Validation dispatcher
   release.sh                         # Version management + GitHub releases
-  VERSION                            # Package version (0.2.0)
+  VERSION                            # Package version (0.3.0)
 design/                              # GDDs, narrative docs (AGENTS.md + registry/)
 docs/                                # Technical docs, ADRs, engine reference
 production/                          # Sprint plans, milestones, session state
@@ -416,16 +425,20 @@ test runs) and block dangerous ones (force push, `rm -rf`, reading `.env` files)
 
 ### Session Continuity
 
-Three skills manage session persistence:
+Three skills manage session persistence, centered on the live worklist cache in
+`production/session-state/active.md`:
 
 - **`/handoff`** — creates a durable `production/session-handoff.md` before
   pausing. Includes review gate, session state rotation, commit/push when
   authorized, and a structured report.
-- **`/resume-from-handoff`** — reads the handoff at session start and produces
-  an oriented, prioritized work plan. Applies the vertical-slice forcing function.
-- **`/studio-next`** — lightweight continuity router. After any work unit,
-  recommends the single best next action from handoff, sprint, stage, and slice
-  state.
+- **`/resume-from-handoff`** — one-time session-entry compiler. Reads the
+  handoff at session start, merges sprint and slice state, and writes a ranked
+  `## Session Worklist` plus `## Phase Guard` into `active.md`. Applies the
+  vertical-slice forcing function. Explicit invocation authorizes that single
+  write.
+- **`/studio-next`** — deprecated manual reference. Normal post-work routing now
+  reads the saved `## Session Worklist`; invoke `/studio-next` only for manual
+  recovery from stale session state.
 
 ### Design Philosophy
 

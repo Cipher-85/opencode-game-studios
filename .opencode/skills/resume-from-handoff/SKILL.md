@@ -3,23 +3,28 @@ name: resume-from-handoff
 description: "Use when starting a fresh project session, resuming from saved state, asking where the project stands, choosing the next work item from handoff state, or saying resume, pick up where I left off, what should I work on, where am I, or catch me up."
 ---
 
-# Resume From Handoff - Boot A Fresh Session Into Productive Work
+# Resume From Handoff - Compile A Fresh Session Worklist
 
-The read-only inverse of `/handoff`. `/handoff` writes the canonical resume doc
-at the end of a session; this skill reads it at the start of the next one and
-turns it into an oriented, prioritized plan.
+`/handoff` writes the canonical resume doc at the end of a session. This skill
+reads it once at the start of the next session, merges the live backlog with
+sprint and slice state, and compiles a ranked `## Session Worklist` (plus a
+`## Phase Guard`) into `production/session-state/active.md`.
 
-This skill writes no files and runs no side-effect commands: no commit, no push,
-no mutating `gh`, and no boot smoke. It reads, synthesizes, and recommends. A
-project-level CI status rule in `AGENTS.md` may still require read-only `gh run`
-status checks when a CI-green verification is explicitly owed; report those
-outputs as observed in this turn if you run them.
+This skill writes exactly one file: `production/session-state/active.md`. It
+does not commit, push, run mutating `gh`, launch builds, or run boot smoke.
+Explicit invocation of `/resume-from-handoff` counts as approval to write or
+overwrite that one session-cache file; do not pause mid-flow to ask for
+permission for `production/session-state/active.md`. A project-level CI status
+rule in `AGENTS.md` may still require read-only `gh run` status checks when a
+CI-green verification is explicitly owed; report those outputs as observed in
+this turn if you run them.
 
 This is a deep read, not a glance. Read the full handoff, follow the playable or
-slice-state pointer declared by the handoff, cross-reference sprint status when
-present, and produce a generous worklist. For lightweight phase orientation use
-`/help`; for a full artifact gap audit use `/project-stage-detect`. This skill
-is neither: it operationalizes the canonical handoff narrative.
+slice-state pointer declared by the handoff, cross-reference sprint status,
+stage, active state, and the workflow catalog, then compile a ranked
+`## Session Worklist`. For lightweight phase orientation use `/help`; for a full
+artifact gap audit use `/project-stage-detect`. This skill is neither: it
+operationalizes the canonical handoff narrative into the session cache.
 
 ## Step 0: Handle Missing Handoff
 
@@ -155,7 +160,24 @@ Hygiene / deferred / owed:
 
 Before you start - check / honor first:
 - <owed verification or gate>
+
+Phase Guard:
+- Stage file: <value or missing>
+- Catalog phase: <phase key/label or unmatched>
+- First incomplete required step: <step + command or unknown>
+- Next gate: <current -> next phase, or none>
+- Phase mismatch: <none, unset stage, handoff drift, or out-of-phase backlog>
+
+Session Worklist:
+1. (Recommended) <lane title> - <why> -> `<command-or-skill>` [extend/feed/carve-out, ~N sessions, source]
+2. <lane title> - <why> -> `<command-or-skill>` [tag, ~N sessions, source]
 ```
+
+Write the `## Phase Guard` and `## Session Worklist` sections above into
+`production/session-state/active.md` (creating or overwriting only that file).
+This write is authorized by the `/resume-from-handoff` invocation; do not ask
+for permission mid-flow. Keep the rest of `active.md` if it already exists; only
+replace or add these two sections.
 
 After the briefing, do not end with a free-text "which would you like?" line.
 Proceed to Step 7.
@@ -190,14 +212,18 @@ selects, confirm the chosen lane and exact starting command. The selection is
 the user's explicit go-ahead for that lane; start that lane or hand off the exact
 command according to the lane's normal skill and project instructions.
 
-When the selected lane completes, apply `/studio-next` continuity behavior
-before ending the session so the work flows into the next best action instead of
-stopping disconnected.
+When the selected lane completes, read or refresh the saved `## Session Worklist`
+in `production/session-state/active.md` and present the next lane as a numbered
+next-action prompt. Do not point the user back to `/resume-from-handoff` after
+work completes.
 
 ## Collaborative Protocol
 
-- Read-only until the user selects a lane; no writes, commits, pushes, mutating
-  `gh`, or boot smoke from this skill.
+- Writes only `production/session-state/active.md`; no commits, pushes, mutating
+  `gh`, or boot smoke from this skill. Explicit invocation authorizes that one
+  write. Do not ask "May I write this session cache?" for
+  `production/session-state/active.md` after the user has invoked
+  `/resume-from-handoff`.
 - Use the `question` tool, not a free-text prompt, for the work-item choice and
   follow-up decisions when the tool is available.
 - Never jump to work the user did not select.
@@ -208,7 +234,25 @@ stopping disconnected.
 
 ## What This Skill Does Not Do
 
-- Does not write, commit, or push; that is `/handoff`.
+- Does not write any file other than `production/session-state/active.md`; does
+  not commit, push, or run mutating `gh` — that is `/handoff`.
 - Does not perform a full artifact gap audit; that is `/project-stage-detect`.
 - Does not replace reading the handoff; it operationalizes the canonical handoff
-  into an oriented, prioritized plan.
+  into the session routing cache.
+
+## Closeout Contract
+
+Every final response from this skill must include completed work, verification
+run or owed verification, and next-lane routing. Read or refresh the
+`## Session Worklist` in `production/session-state/active.md` when present. End
+with a numbered next-action prompt using numeric format only, even when there is
+only one valid lane:
+
+```md
+Next action:
+1. (Recommended) [action label] - [brief reason / command]
+```
+
+If multiple lanes are viable, add more numbered options and keep exactly one
+`(Recommended)` option. The user can reply with `1`. Do not end with only a
+static command list.
