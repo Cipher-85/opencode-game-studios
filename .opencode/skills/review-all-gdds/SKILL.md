@@ -567,7 +567,8 @@ If any GDDs are flagged for revision, use a second `question`:
 ### Session State Update
 
 After writing the report (and updating systems index if approved), silently
-append to `production/session-state/active.md`:
+append to `production/session-state/active.md` as a derived checkpoint; do not
+ask a separate "May I write?" for this file:
 
     ## Session Extract — /review-all-gdds [date]
     - Verdict: [PASS / CONCERNS / FAIL]

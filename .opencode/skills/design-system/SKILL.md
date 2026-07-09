@@ -287,7 +287,9 @@ If the user declines: Stop with the following message:
 > "Verdict: **BLOCKED** — skeleton creation declined. The design session cannot proceed without the skeleton file, as all subsequent phases use it as the base. Re-run `/design-system [system]` when ready to create the file."
 Do not proceed to Section A.
 
-After writing, update `production/session-state/active.md`:
+After writing, silently update `production/session-state/active.md` as a derived
+checkpoint. Do not ask a separate "May I write?" for this file; the user's
+approval of the skeleton authorizes only this session-state checkpoint.
 - Use Glob to check if the file exists.
 - If it **does not exist**: use the **Write** tool to create it. Never attempt Edit on a file that may not exist.
 - If it **already exists**: use the **Edit** tool to update the relevant fields.
@@ -355,9 +357,11 @@ Context  ->  Questions  ->  Options  ->  Decision  ->  Draft  ->  Approval  ->  
    - If new (not in registry): flag it as a candidate for registry registration
      (will be handled in Phase 5).
 
-After writing each section, update `production/session-state/active.md` with the
-completed section name. Use Glob to check if the file exists — use Write to create
-it if absent, Edit to update it if present.
+After writing each approved section, silently update
+`production/session-state/active.md` with the completed section name as a
+derived checkpoint. Do not ask a separate "May I write?" for this file. Use Glob
+to check if the file exists — use Write to create it if absent, Edit to update
+it if present.
 
 ### Section-Specific Guidance
 
@@ -764,7 +768,8 @@ Ask: "May I update the systems index at `design/gdd/systems-index.md`?"
 
 ### 5e: Update Session State
 
-Update `production/session-state/active.md` with:
+Silently update `production/session-state/active.md` with the final derived
+checkpoint. Do not ask a separate "May I write?" for this file.
 - task: [system-name] GDD
 - Status: Complete (or In Review if design-review was run)
 - File: design/gdd/[system-name].md

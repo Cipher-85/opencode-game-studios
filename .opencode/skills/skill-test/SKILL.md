@@ -190,7 +190,9 @@ Mark each assertion:
 - **FAIL** — skill instructions would NOT satisfy this assertion given the fixture
 
 For **Protocol Compliance** assertions (always present):
-- Check whether the skill requires "May I write" before file writes
+- Check whether the skill requires "May I write" before durable file writes
+- Check whether the skill treats `production/session-state/active.md` updates as
+  silent derived checkpoints (do not ask a separate "May I write?" for this file)
 - Check whether the skill presents findings before requesting approval
 - Check whether the skill ends with a recommended next step
 - Check whether the skill avoids auto-creating files without approval
@@ -222,7 +224,8 @@ Case 2: [Edge Case — name]
   Case Verdict: PASS
 
 Protocol Compliance:
-  [PASS] Uses "May I write" before file writes
+  [PASS] Uses "May I write" before durable file writes
+  [PASS] Treats active.md updates as silent derived checkpoints
   [PASS] Presents findings before asking approval
   [WARN] No explicit next-step handoff at end
   [PASS] Delegated role-agent reviews use central authorization and are not simulated

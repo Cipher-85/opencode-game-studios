@@ -472,6 +472,15 @@ Orchestrator uses question:
 
 ### NEVER Write Files Without Explicit Approval
 
+Exception: after the user approves the actual design, code, or document write,
+the agent may update only `production/session-state/active.md` without a second
+prompt when the update records derived checkpoint state: current task, completed
+sections, files touched, already-approved decisions, open questions, owed
+verification, `## Session Worklist`, or `## Phase Guard`. This exception never
+authorizes new design decisions, registry/index/status changes, source edits,
+commits, pushes, branch changes, builds, boot smoke, mutating `gh`, or writes to
+any other path.
+
 Every file write must follow:
 
 ```
@@ -509,7 +518,7 @@ in conversation. This prevents context overflow during long iterative sessions.
    Agent: "May I write this section to the file?"
    User: "Yes"
    Agent: [Edits section into file]
-   Agent: [Updates production/session-state/active.md with progress]
+   Agent: [Silently updates production/session-state/active.md with progress]
    ─── Context for this section can now be safely compacted ───
    ─── The decisions are IN THE FILE ───
 

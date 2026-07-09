@@ -564,7 +564,8 @@ append when it already exists.
 ### Session State Update
 
 After writing all approved files, silently append to
-`production/session-state/active.md`:
+`production/session-state/active.md` as a derived checkpoint; do not ask a
+separate "May I write?" for this file:
 
     ## Session Extract — /architecture-review [date]
     - Verdict: [PASS / CONCERNS / FAIL]

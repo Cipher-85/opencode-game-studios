@@ -1,5 +1,46 @@
 # Changelog
 
+## v0.4.0 - 2026-07-09
+
+Bridged Codex Game Studios v0.4.2–v0.4.3 (silent active-session checkpoints,
+read-only-phase closeout boundary, and delegation-consent simplification) into
+the OpenCode-native port.
+
+- Added a narrow active-session checkpoint exception to the Collaboration
+  Boundary in `AGENTS.md`, `context-management.md`, `session-continuity.md`, and
+  `docs/COLLABORATIVE-DESIGN-PRINCIPLE.md`: after the user approves the workflow
+  artifact or decision, skills may update only `production/session-state/active.md`
+  without a separate "May I write?" prompt when the change is a derived
+  checkpoint (current task, completed sections, files touched, decisions,
+  verification, `## Session Worklist`, or `## Phase Guard`). The exception never
+  authorizes design/balance/architecture decisions, durable edits, source,
+  commits, pushes, branch changes, or writes to any other path.
+- Updated the 6 authoring skills (`/design-system`, `/create-architecture`,
+  `/ux-design`, `/map-systems`, `/prototype`, `/vertical-slice`) and 9 role
+  agents to use silent derived-checkpoint language at their `active.md` update
+  points, plus `/architecture-review`, `/consistency-check`, `/dev-story`,
+  `/qa-plan`, `/review-all-gdds`, `/story-done`, `/team-qa`, and `/skill-test`.
+- Added a `run_checkpoint` validator to `.opencode/audit.sh` (run via
+  `audit.sh checkpoint` or as part of `audit.sh all`) that enforces the
+  no-extra-approval contract: any skill or agent that writes to `active.md` must
+  carry the derived-checkpoint language and must not request a separate
+  "May I write?" prompt for that file. 37 files checked, 0 violations.
+- Added a closeout boundary rule to `AGENTS.md` and the `session-continuity.md`
+  Pause Procedure: do not close out or ask for a user-selected next action while
+  an invoked workflow still has automatic read-only phases remaining
+  (readbacks, scans, self-checks, candidate discovery, context gathering,
+  validation summaries); keep going until a mutation prompt, design decision,
+  blocker, or true stop point.
+- Simplified role-agent delegation consent: removed the redundant "May I spawn
+  those role agents?" fallback from `coordination-rules.md`,
+  `director-gates.md`, and `AGENTS.md`. OpenCode's `Task` tool does not require
+  per-spawn consent — the skill invocation is already the request, so declared
+  gates that survive review-mode filtering spawn without a duplicate
+  confirmation.
+- Gitignored `production/session-state/active.md` (machine-local checkpoint) and
+  added an install guard in `.opencode/lib/coexistence.sh` so the live
+  checkpoint stays local while `session-state/.gitkeep` remains trackable.
+
 ## v0.3.0 - 2026-07-06
 
 Bridged Codex Game Studios v0.3.3 continuity-routing rework plus the v0.4.0

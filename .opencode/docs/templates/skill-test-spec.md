@@ -15,7 +15,10 @@ Verified automatically by `/skill-test static` — no fixture needed.
 - [ ] Has required frontmatter fields: `name`, `description`, `argument-hint`, `user-invocable`, `allowed-tools`
 - [ ] Has ≥2 phase headings (## Phase N or numbered ## sections)
 - [ ] Contains verdict keywords: [list the ones expected, e.g., PASS, FAIL, CONCERNS]
-- [ ] Contains "May I write" collaborative protocol language (if skill writes files)
+- [ ] Contains "May I write" collaborative protocol language (if skill writes
+  durable files)
+- [ ] Treats `production/session-state/active.md` writes as silent derived
+  checkpoints, not a separate approval prompt
 - [ ] Has a next-step handoff at the end
 
 ---
@@ -79,7 +82,9 @@ No files exist in design/gdd/."]
 
 ## Protocol Compliance
 
-- [ ] Uses "May I write" before all file writes
+- [ ] Uses "May I write" before all durable file writes
+- [ ] Does not ask a separate "May I write" before derived
+  `production/session-state/active.md` checkpoint updates
 - [ ] Presents findings or report before asking for write approval
 - [ ] Ends with a recommended next step or follow-up skill
 - [ ] Never auto-creates files without explicit user approval

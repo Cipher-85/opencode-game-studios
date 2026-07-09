@@ -9,6 +9,7 @@
 #   agents       Validate agent files
 #   skills       Validate skill files
 #   closeout     Check closeout-routing contract on completion skills
+#   checkpoint   Check active.md silent-checkpoint contract on skills/agents
 #   runtime      Check for stale references
 #   config       Validate opencode.json
 #   hooks        Test hook scripts
@@ -25,7 +26,7 @@ command="${1:-all}"
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --root) root="$(cd "$2" && pwd -P)"; shift 2 ;;
-    all|agents|skills|runtime|config|hooks|smoke|release|closeout) command="$1"; shift ;;
+    all|agents|skills|runtime|config|hooks|smoke|release|closeout|checkpoint) command="$1"; shift ;;
     *) shift ;;
   esac
 done
@@ -157,6 +158,64 @@ run_closeout() {
     fi
   done
   printf '  %d closeout skills checked\n' "$checked"
+}
+
+run_checkpoint() {
+  printf '\n── Active State Checkpoint ────────────────────────────────\n'
+  if python3 - "$root" <<'PY'
+import os, re, sys
+root = sys.argv[1]
+ACTIVE_PATH = "production/session-state/active.md"
+REQUIRED = ["derived checkpoint", 'Do not ask a separate "May I write?" for this file']
+EXEMPT = {"handoff", "resume-from-handoff"}
+VERBS = r"(?:create|update|append|overwrite|write)"
+targets = []
+sd = os.path.join(root, ".opencode", "skills")
+if os.path.isdir(sd):
+    for d in sorted(os.listdir(sd)):
+        f = os.path.join(sd, d, "SKILL.md")
+        if os.path.isfile(f):
+            targets.append((d, f, d in EXEMPT))
+ad = os.path.join(root, ".opencode", "agents")
+if os.path.isdir(ad):
+    for fn in sorted(os.listdir(ad)):
+        if fn.endswith(".md"):
+            targets.append((fn, os.path.join(ad, fn), False))
+checked = fails = 0
+for name, path, exempt in targets:
+    with open(path) as fh:
+        text = fh.read()
+    if exempt or ACTIVE_PATH not in text:
+        continue
+    checked += 1
+    rel = os.path.relpath(path, root)
+    norm = re.sub(r"\s+", " ", text)
+    lower = norm.lower()
+    npath = re.escape(ACTIVE_PATH)
+    verb = rf"(?<!does not )(?<!do not )(?<!must not )\b{VERBS}\b(?!\s+(?:is|was|complete))"
+    wpatt = rf"(?is){verb}[^.!?;]{{0,180}}`?{npath}`?|`?{npath}`?[^.!?;]{{0,180}}{verb}"
+    bad = False
+    if re.search(wpatt, norm):
+        missing = [p for p in REQUIRED if p.lower() not in lower]
+        if missing:
+            print(f"  ! {rel}: active.md write missing: " + ", ".join(missing))
+            fails += 1; bad = True
+    if not bad:
+        prompt = norm
+        for p in REQUIRED:
+            prompt = re.sub(re.escape(p), "", prompt, flags=re.IGNORECASE)
+        ppatt = rf"(?is)May I (?:write|update)\b(?:\s+[\w/-]+){{0,10}}\s+(?:to\s+|at\s+)?`?(?:{npath}|active\.md)`?[^?]*\?"
+        if re.search(ppatt, prompt):
+            print(f"  ! {rel}: active.md checkpoint must not request a separate May I write/update prompt")
+            fails += 1
+print(f"  {checked} active.md-writing files checked, {fails} violation(s)")
+sys.exit(1 if fails else 0)
+PY
+  then
+    pass "checkpoint contract satisfied"
+  else
+    fail "checkpoint contract violations"
+  fi
 }
 
 run_runtime() {
@@ -304,6 +363,7 @@ case "$command" in
     run_agents
     run_skills
     run_closeout
+    run_checkpoint
     run_runtime
     run_config
     run_hooks
@@ -312,12 +372,13 @@ case "$command" in
   agents)   run_agents ;;
   skills)   run_skills ;;
   closeout) run_closeout ;;
+  checkpoint) run_checkpoint ;;
   runtime)  run_runtime ;;
   config)   run_config ;;
   hooks)    run_hooks ;;
   smoke)    run_smoke ;;
   release)  run_release ;;
-  *) printf 'Unknown command: %s\nAvailable: all, agents, skills, closeout, runtime, config, hooks, smoke, release\n' "$command" >&2; exit 2 ;;
+    *) printf 'Unknown command: %s\nAvailable: all, agents, skills, closeout, checkpoint, runtime, config, hooks, smoke, release\n' "$command" >&2; exit 2 ;;
 esac
 
 printf '\n── Result: %d error(s) ──\n' "$errors"

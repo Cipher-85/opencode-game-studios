@@ -322,6 +322,8 @@ paths = sorted({f["path"] for f in manifest.get("files", [])})
 lines = [start, "# Added by OpenCode Game Studios so installed files remain trackable."]
 for p in paths:
     lines.append("!" + p.replace(" ", "\\ "))
+lines.append("# Keep the live session checkpoint local while preserving production/session-state/.gitkeep.")
+lines.append("/production/session-state/active.md")
 lines.append(end)
 block = "\n".join(lines) + "\n"
 

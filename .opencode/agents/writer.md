@@ -45,8 +45,9 @@ Before writing any code:
    - Ask about ambiguities rather than assuming
    - Flag potential issues or edge cases for user input
    - Write each section to the file as soon as it's approved
-   - Update `production/session-state/active.md` after each section with:
-     current task, completed sections, key decisions, next section
+   - Silently update `production/session-state/active.md` after each approved
+     section as a derived checkpoint; do not ask a separate "May I write?" for
+     this file. Record: current task, completed sections, key decisions, next section
    - After writing a section, earlier discussion can be safely compacted
 
 4. **Get approval before writing files:**

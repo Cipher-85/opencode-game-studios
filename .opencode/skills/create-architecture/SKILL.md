@@ -382,7 +382,7 @@ Show the proposed Document Status block inline, then use `question`:
 
 ## Phase 8: Handoff
 
-**Step 1 — Update session state**: Write a summary to `production/session-state/active.md` covering: artifact written, TD/LP sign-off verdicts, any blockers, required ADRs remaining, and next step.
+**Step 1 — Update session state**: Silently write a summary to `production/session-state/active.md` as a derived checkpoint. Do not ask a separate "May I write?" for this file. Cover: artifact written, TD/LP sign-off verdicts, any blockers, required ADRs remaining, and next step.
 
 **Step 2 — Output the handoff** using exactly this template (no freeform prose, no rephrasing of section titles):
 

@@ -397,7 +397,10 @@ Ask: "May I create the skeleton file at `design/ux/[filename].md`?"
 
 ---
 
-After writing the skeleton, update `production/session-state/active.md` with:
+After writing the skeleton, silently update
+`production/session-state/active.md` as a derived checkpoint. Do not ask a
+separate "May I write?" for this file; the user's approval of the skeleton
+authorizes only this session-state checkpoint.
 - task: Designing [screen/flow name] UX spec
 - Current section: Starting (skeleton created)
 - File: design/ux/[filename].md
@@ -429,7 +432,9 @@ Context  ->  Questions  ->  Options  ->  Decision  ->  Draft  ->  Approval  ->  
    - Options: "Yes, write it", "Wait — one more change"
    Once confirmed, use `Edit` to replace the `[To be designed]` placeholder with approved content.
 
-After writing each section, update `production/session-state/active.md`.
+After writing each approved section, silently update
+`production/session-state/active.md` as a derived checkpoint. Do not ask a
+separate "May I write?" for this file.
 
 ---
 
@@ -882,7 +887,8 @@ When all sections are approved and written:
 
 ### 6a: Update Session State
 
-Update `production/session-state/active.md` with:
+Silently update `production/session-state/active.md` with the final derived
+checkpoint. Do not ask a separate "May I write?" for this file.
 - task: [screen-name] UX spec
 - Status: Complete (or In Review)
 - File: design/ux/[filename].md

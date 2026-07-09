@@ -238,7 +238,7 @@ Verdict: **BLOCKED** — smoke check failed or critical blocker prevented cycle 
 
 ## Session State Update
 
-After the final phase completes (sign-off report written or BLOCKED verdict reached), silently append to `production/session-state/active.md`:
+After the final phase completes (sign-off report written or BLOCKED verdict reached), silently append to `production/session-state/active.md` as a derived checkpoint; do not ask a separate "May I write?" for this file:
 
 ```
 <!-- QA RUN: [date] | Sprint: [sprint identifier or "ad-hoc"] | Verdict: [PASS/FAIL/CONCERNS] | Report: production/qa/qa-[date].md -->

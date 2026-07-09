@@ -279,7 +279,7 @@ Then append the new conflict entries. Never skip logging — a missing file is n
 
 ## Phase 7: Session State and Closing
 
-Silently append to `production/session-state/active.md` (create the file if it does not exist):
+Silently append to `production/session-state/active.md` as a derived checkpoint; do not ask a separate "May I write?" for this file (create the file if it does not exist):
 
 ```
 <!-- CONSISTENCY-CHECK: [date] | GDDs checked: [N] | Conflicts found: [N] | Report: docs/consistency-report-[date].md -->

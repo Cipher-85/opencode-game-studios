@@ -57,13 +57,13 @@ director gates, `lean` runs only PHASE-GATE director gates, and `full` runs
 declared gates normally.
 
 **Runtime fallback**: OpenCode's `Task` tool does not require per-spawn consent
-for agents already named by an invoked skill's workflow. If a surface still
-requires literal user consent before the first subagent spawn, ask one
-confirmation before spawning: "This skill declares [agents/gates]. May I spawn
-those role agents for this run?" If the user declines or delegation is
-unavailable, do not invent, summarize, or simulate specialist/director verdicts.
-Report the missing delegation as skipped or blocked, then continue only where
-the workflow allows a partial result.
+for agents already named by an invoked skill's workflow after review-mode
+filtering — the skill invocation is already the user's request for those
+declared spawns, so do not ask a duplicate confirmation before spawning them.
+If the subagent delegation tool is unavailable or a hard runtime gate prevents
+a declared spawn, do not invent, summarize, or simulate specialist/director
+verdicts. Report the missing delegation as skipped or blocked, then continue
+only where the workflow allows a partial result.
 
 ### Agent Teams (experimental — opt-in)
 Multiple independent OpenCode *sessions* running simultaneously, coordinated

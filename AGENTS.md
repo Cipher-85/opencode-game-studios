@@ -30,6 +30,10 @@ verification-first implementation.
   `production/session-state/active.md`, surface owed verification, and present
   the top valid lane as a numbered next-action prompt. Suggest `/handoff` only
   when the current state should be durable for a future session.
+- Do not close out or ask for a user-selected next action while an invoked
+  workflow still has automatic read-only phases remaining. Readbacks, scans,
+  self-checks, candidate discovery, context gathering, and validation summaries
+  continue until a mutation prompt, design decision, blocker, or true stop point.
 - Every discrete work-unit final response must close the loop: summarize
   completed work, state verification run or owed verification, and end with a
   numbered next-action prompt with exactly one `(Recommended)` option. Use this
@@ -80,6 +84,17 @@ Question -> Options -> Decision -> Draft -> Approval.
   tools.
 - Agents must show drafts or summaries before requesting approval.
 - Multi-file changes require explicit approval for the full changeset.
+- Active session state checkpoint exception: after the user approves the
+  workflow artifact or decision being recorded, skills may create or update only
+  `production/session-state/active.md` without a separate "May I write?" prompt
+  when the change is a derived checkpoint or routing cache: current task,
+  completed sections, files touched, decisions already approved, open
+  questions, owed verification, `## Session Worklist`, or `## Phase Guard`.
+- The checkpoint exception does not authorize new design/game-feel/balance or
+  architecture decisions, durable artifact edits, registry/index/status-file
+  updates, source edits, commits, pushes, branch changes, builds, boot smoke,
+  mutating `gh`, or writes to any path other than
+  `production/session-state/active.md`.
 - `/handoff` exception: explicit invocation of the OpenCode-native `/handoff`
   skill counts as user approval for that skill's declared handoff workflow only:
   update `production/session-handoff.md`, `production/session-archive.md`, and
@@ -102,20 +117,20 @@ See `docs/COLLABORATIVE-DESIGN-PRINCIPLE.md` for full protocol and examples.
 ## Role-Agent Delegation Authorization
 
 Explicit invocation of an OpenCode Game Studios skill whose workflow declares
-role-agent delegation authorizes only the role-agent spawns named by that
-workflow for the current run. The authorization covers spawning and receiving
-role-agent analysis; it does not authorize file writes, commits, pushes, branch
-changes, design decisions, game-feel or balance decisions, undeclared agents, or
-edits outside the invoked skill's normal approval flow.
+role-agent delegation is the user's request to spawn the role agents named by
+that workflow after review-mode filtering, for the current run only. Do not ask
+a duplicate confirmation before spawning those declared role agents. The
+authorization covers spawning and receiving role-agent analysis; it does not
+authorize file writes, commits, pushes, branch changes, design decisions,
+game-feel or balance decisions, undeclared agents, or edits outside the
+invoked skill's normal approval flow.
 
 Before spawning any director or lead gate, resolve the active review mode as
 declared by `.opencode/docs/director-gates.md`. `solo` skips all director gates;
-`lean` skips non-PHASE-GATE director gates; `full` runs declared gates normally.
-OpenCode's `Task` tool does not require per-spawn consent for agents already
-named by an invoked skill's workflow, but file writes and other gated actions
-still follow the Collaboration Boundary above. If delegation is unavailable or
-the user declines a declared spawn, do not simulate specialist or director
-verdicts; report the skipped delegation as a limitation.
+`lean` skips non-PHASE-GATE director gates; `full` runs declared gates
+immediately when the workflow reaches them. If the subagent tool is unavailable
+or a hard runtime gate prevents a declared spawn, report the missing delegation
+as skipped or blocked and do not simulate specialist or director verdicts.
 
 ## Low-Friction Decision Prompts
 
@@ -207,6 +222,9 @@ For code, tests, and tools:
 
 - Tracked docs are the project memory. Keep active state in
   `production/session-state/active.md` when the project has one.
+- Treat `production/session-state/active.md` as a local checkpoint/routing
+  cache. It may be regenerated or overwritten by declared workflows and should
+  not be treated as the durable project record.
 - Preserve session continuity in `production/session-handoff.md`; archive only
   when the continuity docs call for it.
 - Keep generated caches, local-only logs, and transient evidence out of tracked

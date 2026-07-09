@@ -251,7 +251,9 @@ Present the assessment. If REJECT, revise the system set with the user before GD
 
 ### Step 5c: Update Session State
 
-After writing, create `production/session-state/active.md` if it does not exist, then update it with:
+After writing the approved systems index, silently create
+`production/session-state/active.md` if it does not exist, then update it as a
+derived checkpoint. Do not ask a separate "May I write?" for this file.
 - task: Systems decomposition
 - Status: Systems index created
 - File: design/gdd/systems-index.md
@@ -340,8 +342,10 @@ This skill follows the collaborative design principle at every phase:
 4. **Incremental writing**: Update the systems index after each system is designed
 5. **Handoff**: Individual GDD authoring is owned by `/design-system`, which handles
    incremental section writing, cross-referencing, design review, and index updates
-6. **Session state updates**: Write to `production/session-state/active.md` after
-   each milestone (index created, system designed, priorities changed)
+6. **Session state updates**: Silently write to
+   `production/session-state/active.md` after each milestone (index created,
+   system designed, priorities changed) as a derived checkpoint; do not ask a
+   separate "May I write?" for this file.
 
 **Never** auto-generate the full systems list and write it without review.
 **Never** start designing a system without user confirmation.

@@ -380,7 +380,8 @@ The `validate-commit.sh` hook will verify design doc references and check for ha
 ### Session State Update
 
 After updating the story file, silently append to
-`production/session-state/active.md`:
+`production/session-state/active.md` as a derived checkpoint; do not ask a
+separate "May I write?" for this file:
 
     ## Session Extract — /story-done [date]
     - Verdict: [COMPLETE / COMPLETE WITH NOTES / BLOCKED]

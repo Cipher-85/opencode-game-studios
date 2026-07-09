@@ -262,7 +262,7 @@ Ready for: `/code-review [file1] [file2]` then `/story-done [story-path]`
 
 ## Phase 7: Update Session State
 
-Silently append to `production/session-state/active.md`:
+Silently append to `production/session-state/active.md` as a derived checkpoint; do not ask a separate "May I write?" for this file:
 
 ```
 ## Session Extract — /dev-story [date]

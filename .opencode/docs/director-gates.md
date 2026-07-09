@@ -32,7 +32,8 @@ Explicit invocation of a skill that references this document authorizes the
 director and lead subagent spawns declared by that skill, after review-mode
 filtering, for that run only. This authorization does not grant file-write,
 commit, push, branch-change, design-decision, game-feel, balance, or undeclared
-agent permission.
+agent permission. Do not ask a duplicate confirmation before spawning declared
+director or lead gates that survived review-mode filtering.
 
 **Global config**: `production/review-mode.txt` — one word: `full`, `lean`, or `solo`.
 Set once during `/start`. Edit the file directly to change it at any time.
@@ -74,9 +75,10 @@ Apply the resolved mode:
 - full → spawn as normal
 ```
 
-If the runtime still requires literal delegation consent before the first spawn,
-ask once for the agents/gates that survived review-mode filtering. If consent is
-denied, mark those gates skipped or blocked; do not simulate their verdicts.
+If the subagent tool is unavailable or a hard runtime gate prevents a declared
+spawn, mark those gates skipped or blocked and do not simulate their verdicts.
+The skill invocation is already authorization for declared gates that survived
+review-mode filtering; do not ask a second confirmation before spawning them.
 
 ---
 
@@ -94,7 +96,9 @@ Apply the resolved mode:
 
 After applying review mode, spawn only the gates declared by the invoked skill.
 Do not add adjacent reviewers, and do not replace skipped or unavailable gates
-with internal simulated verdicts.
+with internal simulated verdicts. The skill invocation is already authorization
+for declared gates that survived review-mode filtering; do not ask a second
+confirmation before spawning them.
 
 ```
 # Apply mode check, then:

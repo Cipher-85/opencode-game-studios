@@ -251,11 +251,14 @@ If scope covers more than one mechanic, cut it down. When in doubt, cut more.
 
 Present this plan to the user before building. Get confirmation before proceeding.
 
-Once confirmed, write a session checkpoint to `production/session-state/active.md`
-(create `production/session-state/` if it does not exist). Include: concept name,
-hypothesis, path chosen, scope bullet points, and current phase ("Phase 5 —
-Implement"). This lets the next session resume without starting over if the session
-ends mid-build — especially important for multi-day Engine path work.
+Once confirmed, silently write a session checkpoint to
+`production/session-state/active.md` as a derived checkpoint (create
+`production/session-state/` if it does not exist). Do not ask a separate
+"May I write?" for this file; the user's scope confirmation authorizes this
+checkpoint. Include: concept name, hypothesis, path chosen, scope bullet points,
+and current phase ("Phase 5 — Implement"). This lets the next session resume
+without starting over if the session ends mid-build — especially important for
+multi-day Engine path work.
 
 ---
 
@@ -533,7 +536,7 @@ gate implications. Hard cap: ~4 hours.
    - Result (YES it works / NO it doesn't / PARTIAL — needs more investigation)
    - What to do next (add to current sprint / investigate further / abandon the idea)
 
-7. **Update `production/session-state/active.md`** to clear the spike and return to the current sprint state.
+7. **Silently update `production/session-state/active.md`** as a derived checkpoint (do not ask a separate "May I write?") to clear the spike and return to the current sprint state.
 
 **No CD gate. No phase gate. No PROCEED/PIVOT/KILL.** Spike results inform decisions; they don't make them. The developer decides whether to add the mechanic/approach to the sprint backlog based on what the spike revealed.
 

@@ -8,7 +8,9 @@ history. Prefer small, current, file-backed state over broad transcripts.
 - `production/session-state/active.md`: live working checkpoint and current
   session routing cache. Use for current task, progress checklist, decisions,
   files touched, open questions, owed verification, `## Session Worklist`, and
-  `## Phase Guard`.
+  `## Phase Guard`. It is derived local session state; once the underlying
+  artifact or decision is approved, skills may update only this file without a
+  separate write-approval prompt.
 - `production/session-handoff.md`: canonical resume narrative when a session has
   enough state that another session should continue from it.
 - `production/session-archive.md`: historical record only. Do not read by default
@@ -20,13 +22,21 @@ history. Prefer small, current, file-backed state over broad transcripts.
 Missing files are unset state. Do not create continuity files unless the task or
 skill calls for it.
 
+The checkpoint exception is narrow. It never authorizes new design, game-feel,
+balance, architecture, source, registry, index, status-file, commit, push,
+branch, build, boot-smoke, mutating `gh`, or additional file changes.
+
 ## Pause Procedure
 
-Before pausing a meaningful work unit:
+Before pausing a meaningful work unit, check whether the invoked workflow still
+has automatic read-only phases remaining. Do not convert self-checks, readbacks,
+scans, candidate discovery, context gathering, or validation summaries into
+selectable `Next action` prompts. Keep going until a mutation prompt, design
+decision, blocker, or true stop point.
 
 1. Record what changed and what remains.
 2. Record verification that passed, failed, was blocked, or was not run.
-3. Read or refresh `## Session Worklist` in
+3. Read or silently refresh `## Session Worklist` in
    `production/session-state/active.md` and recommend the top valid lane.
    The final response must include completed work, verification or owed
    verification, and a numbered next-action prompt with exactly one
