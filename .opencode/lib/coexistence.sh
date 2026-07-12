@@ -370,6 +370,59 @@ ccgs_install_state_file() {
   printf '%s/%s\n' "${target_root:-$PWD}" "$ccgs_install_state_rel"
 }
 
+ccgs_state_validate() {
+  # Validate install-state.json. Returns: 0 valid, 1 invalid, 2 missing.
+  # Prints a reason to stderr when invalid. Args: target_root (optional)
+  local root="${1:-${target_root:-$PWD}}"
+  local state_file="$root/$ccgs_install_state_rel"
+  if [ ! -f "$state_file" ]; then
+    printf 'install-state missing: %s\n' "$state_file" >&2
+    return 2
+  fi
+  if [ -L "$state_file" ]; then
+    printf 'install-state is a symlink (unsafe): %s\n' "$state_file" >&2
+    return 1
+  fi
+  python3 - "$state_file" <<'PY'
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+try:
+    data = json.loads(p.read_text(encoding="utf-8"))
+except Exception as e:
+    print(f"malformed install-state JSON: {e}", file=sys.stderr); sys.exit(1)
+if data.get("schema_version") != 2:
+    print(f"unsupported schema_version: {data.get('schema_version')}", file=sys.stderr); sys.exit(1)
+for key in ("installed_file_hashes", "shared_paths_created", "shared_paths_preserved"):
+    val = data.get(key, {})
+    items = val.keys() if isinstance(val, dict) else val
+    for rel in items:
+        s = str(rel)
+        if s.startswith("/") or ".." in s.split("/"):
+            print(f"unsafe path in {key}: {s}", file=sys.stderr); sys.exit(1)
+sys.exit(0)
+PY
+}
+
+ccgs_state_owned_paths() {
+  # Emit package-owned paths from install-state, one per line.
+  # Caller MUST validate state first. Args: target_root (optional)
+  local root="${1:-${target_root:-$PWD}}"
+  local state_file="$root/$ccgs_install_state_rel"
+  python3 - "$state_file" <<'PY'
+import json, sys
+from pathlib import Path
+try:
+    data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except Exception:
+    sys.exit(1)
+items = data.get("installed_file_hashes", {})
+paths = items.keys() if isinstance(items, dict) else items
+for rel in sorted(paths):
+    print(rel)
+PY
+}
+
 ccgs_write_install_state() {
   # Args: target_root source_root mode patch_mode opus_model sonnet_model haiku_model primary_model
   #       opus_variant sonnet_variant haiku_variant preserved_file created_file

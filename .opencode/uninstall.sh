@@ -37,45 +37,32 @@ install_mode="$(ccgs_detect_mode)"
 printf '── OpenCode Game Studios Uninstall ──\n\n'
 ccgs_print_mode_summary "$install_mode"
 
-# ── Read install state for file list ─────────────────────────────
+# ── Read install state for file list (fail-closed) ───────────────
 state_file="$target_root/.opencode/install-state.json"
-manifest="$source_root/.opencode/manifest/installed-files.json"
 
-# Get paths we created (from install state or manifest fallback)
 paths_file="$(mktemp "${TMPDIR:-/tmp}/ccgs-uninstall-paths.XXXXXX")"
 trap 'rm -f "$paths_file"' EXIT
 
-if [ -f "$state_file" ]; then
-  # Read file hashes from install-state (exact list of what we deployed)
-  python3 -c "
-import json, sys
-with open('$state_file') as f:
-    state = json.load(f)
-for path in sorted(state.get('installed_file_hashes', {}).keys()):
-    print(path)
-" > "$paths_file" 2>/dev/null
-elif [ -f "$manifest" ]; then
-  # Fallback: use manifest
-  python3 -c "
-import json
-with open('$manifest') as f:
-    data = json.load(f)
-for entry in data.get('files', []):
-    print(entry['path'])
-" > "$paths_file" 2>/dev/null
+# Fail-closed: uninstall requires valid install-state ownership data.
+# Missing, stale, malformed, path-traversing, or symlinked state aborts
+# without removing project files. Never infer ownership from the source
+# manifest or from file contents.
+if ccgs_state_validate "$target_root"; then
+  ccgs_state_owned_paths "$target_root" > "$paths_file"
+else
+  rc=$?
+  reason="invalid"
+  [ "$rc" -eq 2 ] && reason="missing"
+  printf '\nERROR: cannot uninstall safely — install-state is %s.\n' "$reason" >&2
+  printf 'Uninstall requires valid .opencode/install-state.json ownership data.\n' >&2
+  printf 'Restore it from .opencode/backups/ or resolve ownership manually.\n' >&2
+  printf 'No files were changed.\n' >&2
+  exit 1
 fi
 
 if [ ! -s "$paths_file" ]; then
-  printf 'No install state or manifest found — stripping models only.\n'
-  # Still strip models + remove generated files
-  if [ "$dry_run" -eq 0 ]; then
-    ccgs_strip_all_agents "$target_root"
-    ccgs_remove_primary_model "$target_root"
-    for f in .opencode/models.json .opencode/install-state.json; do
-      [ -f "$target_root/$f" ] && rm "$target_root/$f"
-    done
-  fi
-  printf 'Done (models stripped, no file list to remove).\n'
+  printf 'install-state valid but records no owned files — nothing to remove.\n'
+  printf 'No files were changed.\n'
   exit 0
 fi
 
@@ -150,13 +137,11 @@ while IFS= read -r path; do
 
   case "$path" in
     AGENTS.md|*/AGENTS.md)
-      # Remove marker block, preserve rest of file
+      # Remove our marker block only. ccgs_remove_marker_block deletes the
+      # file solely when its pre-strip content was nothing but the marker
+      # block; it keeps any user-authored content and never uses emptiness
+      # or file contents as ownership proof.
       ccgs_remove_marker_block "$target_file" 2>/dev/null || true
-      # If file is now empty or just a stub, remove it
-      if [ -f "$target_file" ]; then
-        local_content="$(tr -d '\n\r\t ' < "$target_file" 2>/dev/null || true)"
-        [ -z "$local_content" ] && rm -f "$target_file"
-      fi
       ;;
     opencode.json)
       # Don't remove opencode.json (user may have other config)
@@ -187,15 +172,12 @@ done
 ccgs_remove_gitignore_allowlist "$target_root" 2>/dev/null || true
 
 # ── Prune empty OpenCode-owned directories ───────────────────────
-if is_coexist; then
-  # Only prune .opencode/ in coexistence mode (leave shared dirs alone)
+# Pruning is limited to the OpenCode runtime directory (.opencode/).
+# Shared content roots (design/, docs/, production/, src/, assets/, tests/,
+# tools/, "CCGS Skill Testing Framework/") are never deleted even when empty
+# — emptiness is not ownership proof and they may be user scaffolds.
+if [ -d "$target_root/.opencode" ]; then
   find "$target_root/.opencode" -depth -type d -empty -delete 2>/dev/null || true
-else
-  # Full prune of all framework dirs
-  for dir in .opencode "CCGS Skill Testing Framework" assets design docs production prototypes src tests tools; do
-    [ -d "$target_root/$dir" ] || continue
-    find "$target_root/$dir" -depth -type d -empty -delete 2>/dev/null || true
-  done
 fi
 
 printf '\nDone. OpenCode Game Studios removed.\n'

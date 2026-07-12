@@ -267,6 +267,19 @@ The installer deploys all framework files alongside existing content. It detects
 prior installs, foreign runtimes (Claude Code, Codex), and preserves shared
 project files. See [Coexistence](#coexistence) below.
 
+The installer preflights the target before mutating anything: an **unowned
+collision** (an existing file at a package path not proven ours) or a
+**locally-modified package-owned file** aborts the deploy with the exact paths
+and changes nothing. To back up and replace state-proven package paths you
+intentionally edited, re-run with `--replace-modified`:
+
+```bash
+bash .opencode/install.sh --dry-run --replace-modified /path/to/existing-game-project
+bash .opencode/install.sh --replace-modified /path/to/existing-game-project
+```
+
+`--replace-modified` never overwrites an unowned shared file.
+
 ### What the installer modifies
 
 1. **`.opencode/agents/*.md`** — injects `model:` and `variant:` into each
@@ -300,6 +313,13 @@ bash .opencode/uninstall.sh --dry-run /path/to/project
 In coexistence mode, the uninstaller preserves shared paths it didn't create,
 removes only OpenCode-owned files, and extracts the marker block from
 `AGENTS.md` without deleting user content.
+
+Uninstall is **fail-closed**: it requires valid `.opencode/install-state.json`
+ownership data. Missing, stale, malformed, path-traversing, or symlinked state
+aborts without removing project files — restore the state from
+`.opencode/backups/` or resolve ownership manually. `AGENTS.md` is deleted only
+when its entire content was the CCGS marker block; any user-authored content is
+kept.
 
 ## Coexistence
 

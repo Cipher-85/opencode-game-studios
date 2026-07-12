@@ -133,6 +133,21 @@ live. After any upgrade, trust the target project and start a **new
 `opencode` session** before verifying hooks, rules, permission profile, and
 agents. Keep the exact failing command and output if verification is blocked.
 
+Upgrades are fail-closed. A cross-target deploy aborts before mutating when it
+finds an unowned collision (an existing file at a package path not proven ours)
+or a locally-modified package-owned file. Review the abort with `--dry-run`,
+then opt into backup-first replacement for state-proven package paths only:
+
+```bash
+bash .opencode/install.sh --dry-run --replace-modified /path/to/project
+bash .opencode/install.sh --replace-modified /path/to/project
+```
+
+`--replace-modified` never adopts an unowned shared path; merge those manually.
+Uninstall is also fail-closed: it requires valid `.opencode/install-state.json`
+ownership data and aborts without removing files when state is missing, stale,
+malformed, path-traversing, or symlinked.
+
 ---
 
 ## v0.4.1

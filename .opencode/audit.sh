@@ -606,6 +606,51 @@ run_release() {
   fi
 }
 
+run_install_safety() {
+  printf '\n── Installer Safety ────────────────────────────────────────\n'
+  local coex="$root/.opencode/lib/coexistence.sh"
+  local inst="$root/.opencode/install.sh"
+  local uninst="$root/.opencode/uninstall.sh"
+  local problems=0
+
+  if grep -q 'ccgs_state_validate()' "$coex" 2>/dev/null; then
+    pass "coexistence.sh defines ccgs_state_validate"
+  else
+    fail "coexistence.sh missing ccgs_state_validate (uninstall cannot fail closed)"
+    problems=1
+  fi
+
+  if grep -q 'ccgs_state_validate' "$uninst" 2>/dev/null; then
+    pass "uninstall.sh validates state (fail-closed)"
+  else
+    fail "uninstall.sh does not call ccgs_state_validate"
+    problems=1
+  fi
+
+  if grep -q 'installed-files.json' "$uninst" 2>/dev/null; then
+    fail "uninstall.sh references installed-files.json (ownership-by-manifest regression)"
+    problems=1
+  else
+    pass "uninstall.sh does not infer ownership from source manifest"
+  fi
+
+  if grep -q -- '--replace-modified' "$inst" 2>/dev/null; then
+    pass "install.sh supports --replace-modified"
+  else
+    fail "install.sh missing --replace-modified opt-in"
+    problems=1
+  fi
+
+  if grep -q 'Preflight' "$inst" 2>/dev/null; then
+    pass "install.sh runs a preflight pass"
+  else
+    fail "install.sh missing preflight conflict detection"
+    problems=1
+  fi
+
+  return $problems
+}
+
 case "$command" in
   all)
     run_agents
@@ -618,6 +663,7 @@ case "$command" in
     run_resume_contract
     run_runtime
     run_config
+    run_install_safety
     run_hooks
     run_smoke
     ;;
@@ -631,10 +677,11 @@ case "$command" in
   resume-contract) run_resume_contract ;;
   runtime)  run_runtime ;;
   config)   run_config ;;
+  install-safety) run_install_safety ;;
   hooks)    run_hooks ;;
   smoke)    run_smoke ;;
   release)  run_release ;;
-    *) printf 'Unknown command: %s\nAvailable: all, agents, skills, closeout, checkpoint, playtest, bug-lifecycle, handoff-review, resume-contract, runtime, config, hooks, smoke, release\n' "$command" >&2; exit 2 ;;
+    *) printf 'Unknown command: %s\nAvailable: all, agents, skills, closeout, checkpoint, playtest, bug-lifecycle, handoff-review, resume-contract, runtime, config, install-safety, hooks, smoke, release\n' "$command" >&2; exit 2 ;;
 esac
 
 printf '\n── Result: %d error(s) ──\n' "$errors"

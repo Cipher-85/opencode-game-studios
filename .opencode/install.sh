@@ -16,6 +16,7 @@ source "$script_dir/lib/coexistence.sh"
 
 # ── Parse arguments ──────────────────────────────────────────────
 dry_run=0
+replace_modified=0
 target_arg=""
 opus_model=""
 sonnet_model=""
@@ -28,6 +29,7 @@ haiku_variant=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --dry-run) dry_run=1; shift ;;
+    --replace-modified) replace_modified=1; shift ;;
     --tier-opus)         opus_model="${2:-}";   shift 2 ;;
     --tier-sonnet)       sonnet_model="${2:-}"; shift 2 ;;
     --tier-haiku)        haiku_model="${2:-}";  shift 2 ;;
@@ -203,6 +205,7 @@ manifest_path = '$manifest'
 preserved_path = '$preserved_file'
 created_path = '$created_file'
 dry_run = 0
+replace_modified = $replace_modified
 
 marker_start = '$ccgs_marker_start'
 marker_end = '$ccgs_marker_end'
@@ -242,6 +245,81 @@ def is_coexist_mode(m):
 
 with open(manifest_path) as f:
     data = json.load(f)
+
+# ── Preflight: classify paths and detect conflicts before any mutation ──
+# A path is package-owned when prior install-state records it. On a fresh
+# target (no valid state) every existing manifest path that is not a
+# coexist-preserved shared file counts as an unowned collision. We never
+# infer ownership from file contents.
+_state_path = os.path.join(target, '.opencode', 'install-state.json')
+owned_hashes = {}
+if os.path.isfile(_state_path) and not os.path.islink(_state_path):
+    try:
+        with open(_state_path) as _sf:
+            _state = json.load(_sf)
+        if _state.get('schema_version') == 2:
+            owned_hashes = _state.get('installed_file_hashes', {}) or {}
+    except Exception:
+        owned_hashes = {}
+has_state = bool(owned_hashes)
+
+def _sha256_of(p):
+    h = hashlib.sha256()
+    with open(p, 'rb') as fh:
+        for _chunk in iter(lambda: fh.read(65536), b''):
+            h.update(_chunk)
+    return h.hexdigest()
+
+_collisions = []   # existing paths not proven package-owned
+_modified = []     # package-owned paths changed locally
+for entry in data.get('files', []):
+    rel = entry['path']
+    mode_flag = entry.get('mode', 'copy')
+    src = os.path.join(source, rel)
+    dst = os.path.join(target, rel)
+    if not os.path.exists(src):
+        continue
+    if is_foreign(rel):
+        continue            # execution refuses; not a deploy conflict
+    if mode_flag == 'marker':
+        continue            # marker splice, not a wholesale conflict
+    if rel == 'opencode.json':
+        continue            # only-if-absent; preserved when present
+    if is_coexist_mode(mode) and os.path.exists(dst) and not rel.startswith('.opencode/'):
+        continue            # preserved shared content
+    if not os.path.exists(dst):
+        continue            # create — no conflict
+    # dst exists and the standard-copy branch would overwrite it — classify
+    if has_state and rel in owned_hashes:
+        recorded = owned_hashes.get(rel)
+        try:
+            _dst_hash = _sha256_of(dst)
+        except OSError:
+            continue
+        if _dst_hash == recorded:
+            continue        # unchanged since we installed it — normal refresh
+        _src_hash = _sha256_of(src)
+        if _dst_hash == _src_hash:
+            continue        # already current
+        _modified.append(rel)
+    else:
+        _collisions.append(rel)
+
+if _collisions or (_modified and not replace_modified):
+    print('\n-- Preflight conflict: no files were changed --', file=sys.stderr)
+    if _collisions:
+        print('Unowned collisions (existing files not proven package-owned):', file=sys.stderr)
+        for _c in sorted(set(_collisions)):
+            print(f'  - {_c}', file=sys.stderr)
+        print('Resolve by removing/renaming these files, or install into a clean target.', file=sys.stderr)
+    if _modified and not replace_modified:
+        print('Locally-modified package-owned files (would be overwritten):', file=sys.stderr)
+        for _m in sorted(set(_modified)):
+            print(f'  - {_m}', file=sys.stderr)
+        print('Review with --dry-run, then re-run with --replace-modified to back up and replace', file=sys.stderr)
+        print('only state-proven package paths. --replace-modified never overwrites an unowned shared file.', file=sys.stderr)
+    sys.exit(1)
+# end preflight
 
 import filecmp
 
