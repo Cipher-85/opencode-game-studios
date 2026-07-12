@@ -125,6 +125,16 @@ Best when: you didn't use git to set up the template (just downloaded a zip).
 
 ---
 
+## Verify After Upgrade
+
+Installer success is static evidence only — it proves package deployment and
+the static audit, not that project hooks, rules, permissions, or agents are
+live. After any upgrade, trust the target project and start a **new
+`opencode` session** before verifying hooks, rules, permission profile, and
+agents. Keep the exact failing command and output if verification is blocked.
+
+---
+
 ## v0.4.1
 
 **Released:** 2026-04-02

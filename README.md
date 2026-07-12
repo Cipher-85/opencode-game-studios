@@ -276,6 +276,11 @@ project files. See [Coexistence](#coexistence) below.
 4. **`.opencode/install-state.json`** — schema-v2 with SHA256 hashes, detected
    mode, preserved/created paths, and model configuration
 
+> **Static install only.** Installer success proves package deployment and
+> static verification only. Trust the target project and start a **new
+> `opencode` session** before treating its hooks, rules, permission profile,
+> or agents as active.
+
 ## Uninstall
 
 Restore the model-agnostic state (strips injected `model:` and `variant:` from

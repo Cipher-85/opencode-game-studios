@@ -37,8 +37,17 @@
     },
     "read": {
       "*": "allow",
-      "*.env": "deny",
-      "*.env.*": "deny",
+      "*.env*": "deny",
+      "*.env.example": "allow"
+    },
+    "edit": {
+      "*": "allow",
+      "*.env*": "deny",
+      "*.env.example": "allow"
+    },
+    "glob": {
+      "*": "allow",
+      "*.env*": "deny",
       "*.env.example": "allow"
     }
   },

@@ -500,6 +500,10 @@ if 'instructions' not in cfg:
     print('missing instructions'); sys.exit(1)
 if 'plugin' not in cfg:
     print('missing plugin'); sys.exit(1)
+perm = cfg.get('permission', {})
+edit_rules = perm.get('edit', {})
+if not isinstance(edit_rules, dict) or not any(v == 'deny' and '.env' in str(k) for k, v in edit_rules.items()):
+    print('missing edit .env* deny'); sys.exit(1)
 sys.exit(0)
 " 2>/dev/null && pass "opencode.json valid" || fail "opencode.json invalid"
 
