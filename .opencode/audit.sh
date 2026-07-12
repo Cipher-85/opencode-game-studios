@@ -30,7 +30,7 @@ command="${1:-all}"
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --root) root="$(cd "$2" && pwd -P)"; shift 2 ;;
-    all|agents|skills|runtime|config|hooks|smoke|release|closeout|checkpoint|playtest|bug-lifecycle|handoff-review|resume-contract) command="$1"; shift ;;
+    all|agents|skills|runtime|config|hooks|smoke|release|closeout|checkpoint|playtest|bug-lifecycle|handoff-review|resume-contract|install-safety|coexistence|smoke-headless) command="$1"; shift ;;
     *) shift ;;
   esac
 done
@@ -651,6 +651,111 @@ run_install_safety() {
   return $problems
 }
 
+run_coexistence() {
+  printf '\n── Coexistence / Installer Matrix ───────────────────────────\n'
+  printf '   (advisory — runs a real install/uninstall matrix in a temp dir)\n'
+  local inst="$root/.opencode/install.sh"
+  local uninst="$root/.opencode/uninstall.sh"
+  [ -f "$inst" ] && [ -f "$uninst" ] || { fail "install.sh/uninstall.sh not found"; return 1; }
+
+  local model=""
+  if command -v opencode >/dev/null 2>&1; then model="$(opencode models 2>/dev/null | head -1)"
+  elif [ -x "$HOME/.opencode/bin/opencode" ]; then model="$("$HOME/.opencode/bin/opencode" models 2>/dev/null | head -1)"; fi
+  [ -n "$model" ] || model="local/test"
+  local MF="--tier-opus $model --tier-sonnet $model --tier-haiku $model --primary $model"
+
+  local base T out rc
+  base="$(mktemp -d "${TMPDIR:-/tmp}/ccgs-coex.XXXXXX")" || { fail "could not create temp dir"; return 1; }
+
+  # S1 fresh install
+  T="$base/s1"; mkdir -p "$T"
+  rc=0; out="$(bash "$inst" $MF "$T" 2>&1)" || rc=$?
+  if [ "$rc" -eq 0 ] && [ -f "$T/.opencode/install-state.json" ]; then pass "S1 fresh install + state"; else fail "S1 fresh install (rc=$rc)"; fi
+
+  # S2 unowned collision -> preflight abort, no mutation
+  T="$base/s2"; mkdir -p "$T/.github"; printf 'USER\n' > "$T/.github/CODEOWNERS"
+  rc=0; out="$(printf 'y\n' | bash "$inst" $MF "$T" 2>&1)" || rc=$?
+  if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -qi 'Preflight conflict'; then pass "S2 unowned collision abort"; else fail "S2 collision abort (rc=$rc)"; fi
+  if [ -f "$T/.opencode/install-state.json" ]; then fail "S2 mutated target despite abort"; else pass "S2 no mutation"; fi
+
+  # S3 modified-file -> preflight abort, then S4 --replace-modified
+  T="$base/s3"; mkdir -p "$T"
+  bash "$inst" $MF "$T" >/dev/null 2>&1 || true
+  printf 'USER-EDIT\n' > "$T/.opencode/VERSION"
+  rc=0; out="$(bash "$inst" $MF "$T" 2>&1)" || rc=$?
+  if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -qi 'Locally-modified'; then pass "S3 modified-file abort"; else fail "S3 modified abort (rc=$rc)"; fi
+  rc=0; out="$(bash "$inst" $MF --replace-modified "$T" 2>&1)" || rc=$?
+  if [ "$rc" -eq 0 ] && [ "$(cat "$T/.opencode/VERSION" 2>/dev/null)" = "$(cat "$root/.opencode/VERSION")" ]; then pass "S4 --replace-modified restore"; else fail "S4 replace-modified (rc=$rc)"; fi
+
+  # S5 uninstall missing-state -> abort, no removal
+  T="$base/s5"; mkdir -p "$T"
+  bash "$inst" $MF "$T" >/dev/null 2>&1 || true
+  local agents_before
+  agents_before="$(ls "$T/.opencode/agents"/*.md 2>/dev/null | wc -l | tr -d ' ')"
+  rm -f "$T/.opencode/install-state.json"
+  rc=0; out="$(bash "$uninst" "$T" 2>&1)" || rc=$?
+  if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -qi 'cannot uninstall safely'; then pass "S5 uninstall missing-state abort"; else fail "S5 missing-state abort (rc=$rc)"; fi
+  if [ "$(ls "$T/.opencode/agents"/*.md 2>/dev/null | wc -l | tr -d ' ')" = "$agents_before" ]; then pass "S5 no files removed"; else fail "S5 files removed despite abort"; fi
+
+  # S6 uninstall valid-state -> clean removal
+  T="$base/s6"; mkdir -p "$T"
+  bash "$inst" $MF "$T" >/dev/null 2>&1 || true
+  rc=0; out="$(bash "$uninst" "$T" 2>&1)" || rc=$?
+  if [ "$rc" -eq 0 ] && [ ! -f "$T/.opencode/install-state.json" ] && [ ! -f "$T/.opencode/agents/creative-director.md" ]; then pass "S6 uninstall valid-state clean"; else fail "S6 valid-state uninstall (rc=$rc)"; fi
+
+  # S7 transactional rollback on forced mid-deploy failure
+  T="$base/s7"; mkdir -p "$T"
+  bash "$inst" $MF "$T" >/dev/null 2>&1 || true
+  printf 'MY-MOD\n' > "$T/.opencode/.gitignore"
+  rm -f "$T/.opencode/README.md"
+  if chmod 444 "$T/.opencode/uninstall.sh" 2>/dev/null; then
+    local a_before a_after
+    a_before="$(cat "$T/.opencode/.gitignore")"
+    rc=0; out="$(bash "$inst" $MF --replace-modified "$T" 2>&1)" || rc=$?
+    chmod 644 "$T/.opencode/uninstall.sh" 2>/dev/null || true
+    a_after="$(cat "$T/.opencode/.gitignore" 2>/dev/null)"
+    if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -qi 'rolling back' && [ "$a_after" = "$a_before" ] && [ ! -f "$T/.opencode/README.md" ]; then
+      pass "S7 transactional rollback (restore + remove)"
+    else
+      fail "S7 rollback (rc=$rc)"
+    fi
+  else
+    pass "S7 rollback: SKIP (chmod 444 unsupported)"
+  fi
+
+  rm -rf "$base" 2>/dev/null || true
+  return 0
+}
+
+run_smoke_headless() {
+  printf '\n── Headless Smoke (non-model) ──────────────────────────────\n'
+  printf '   (advisory — command/skill graph integrity; model-driven smoke deferred)\n'
+  local problems=0 cmds=0 broken=0
+
+  # command -> skill graph integrity
+  local c ref skill_path
+  for c in "$root"/.opencode/commands/*.md; do
+    [ -f "$c" ] || continue
+    cmds=$((cmds + 1))
+    ref="$(grep -oE '@\.opencode/skills/[^/]+/SKILL\.md' "$c" 2>/dev/null | head -1)"
+    if [ -z "$ref" ]; then
+      fail "$(basename "$c" .md): no @skill reference"
+      broken=$((broken + 1)); problems=1
+      continue
+    fi
+    skill_path="${ref#@}"
+    if [ ! -f "$root/$skill_path" ]; then
+      fail "$(basename "$c" .md): skill $ref missing"
+      broken=$((broken + 1)); problems=1
+    fi
+  done
+  [ "$broken" -eq 0 ] && pass "$cmds commands resolve to an existing skill"
+
+  # model-driven boot is intentionally deferred (needs model + API access)
+  pass "model-driven boot: DEFERRED (wire explicitly when a CI model runner exists)"
+  return $problems
+}
+
 case "$command" in
   all)
     run_agents
@@ -678,10 +783,12 @@ case "$command" in
   runtime)  run_runtime ;;
   config)   run_config ;;
   install-safety) run_install_safety ;;
+  coexistence) run_coexistence ;;
+  smoke-headless) run_smoke_headless ;;
   hooks)    run_hooks ;;
   smoke)    run_smoke ;;
   release)  run_release ;;
-    *) printf 'Unknown command: %s\nAvailable: all, agents, skills, closeout, checkpoint, playtest, bug-lifecycle, handoff-review, resume-contract, runtime, config, install-safety, hooks, smoke, release\n' "$command" >&2; exit 2 ;;
+    *) printf 'Unknown command: %s\nAvailable: all, agents, skills, closeout, checkpoint, playtest, bug-lifecycle, handoff-review, resume-contract, runtime, config, install-safety, coexistence, smoke-headless, hooks, smoke, release\n' "$command" >&2; exit 2 ;;
 esac
 
 printf '\n── Result: %d error(s) ──\n' "$errors"

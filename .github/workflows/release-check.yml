@@ -39,3 +39,24 @@ jobs:
       - name: Release check (on tag)
         if: startsWith(github.ref, 'refs/tags/opencode-v')
         run: bash .opencode/audit.sh release --root .
+
+  # Advisory (non-blocking) jobs: surface installer-safety regressions early
+  # without failing the build. Mirror the Codex-Game-Studios advisory pattern.
+  coexistence-advisory:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Installer coexistence matrix
+        run: bash .opencode/audit.sh coexistence --root .
+
+  smoke-headless-advisory:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Headless smoke (command/skill graph)
+        run: bash .opencode/audit.sh smoke-headless --root .
