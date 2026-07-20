@@ -13,7 +13,7 @@
   <a href=".opencode/skills"><img src="https://img.shields.io/badge/skills-77-green" alt="77 Skills"></a>
   <a href=".opencode/commands"><img src="https://img.shields.io/badge/commands-77-yellow" alt="77 Commands"></a>
   <a href=".opencode/hooks"><img src="https://img.shields.io/badge/hooks-12-orange" alt="12 Hooks"></a>
-  <a href=".opencode/VERSION"><img src="https://img.shields.io/badge/version-0.5.1-blue" alt="v0.5.1"></a>
+  <a href=".opencode/VERSION"><img src="https://img.shields.io/badge/version-0.5.2-blue" alt="v0.5.2"></a>
   <a href="https://opencode.ai"><img src="https://img.shields.io/badge/built%20for-OpenCode-f5f5f5" alt="Built for OpenCode"></a>
 </p>
 
@@ -69,7 +69,7 @@ first brainstorm to launch.
 
 ## Current Status
 
-Package version: `0.5.1` (see [`.opencode/VERSION`](.opencode/VERSION)).
+Package version: `0.5.2` (see [`.opencode/VERSION`](.opencode/VERSION)).
 
 This release includes:
 - Hard `/resume-from-handoff` lane-selection boundary: focus arguments only bias
@@ -442,7 +442,7 @@ opencode.json                        # Permissions, plugin ref, instruction file
   uninstall.sh                       # Coexistence-aware uninstaller
   audit.sh                           # Validation dispatcher
   release.sh                         # Version management + GitHub releases
-  VERSION                            # Package version (0.5.1)
+  VERSION                            # Package version (0.5.2)
 design/                              # GDDs, narrative docs (AGENTS.md + registry/)
 docs/                                # Technical docs, ADRs, engine reference
 production/                          # Sprint plans, milestones, session state

@@ -1,5 +1,39 @@
 # Changelog
 
+## v0.5.2 - 2026-07-20
+
+Bridged Codex Game Studios v0.7.0 handoff push-flow corrections (upstream
+commits `47e237c`, `7cf7f5e`, `b778a2b`) into the OpenCode-native port.
+
+- Demoted the `/handoff` Phase 4 GitHub CLI dest-evidence gate
+  (`gh auth status`, `gh api user`, `gh repo view … viewerPermission`) from
+  mandatory precondition to optional advisory check. Upstream falsified the
+  gate (risk R39): Git and `gh` can use different credentials, so an
+  inconclusive `gh` result falsely blocked authorized pushes. The resolved
+  push URL, branch/upstream, and explicit `/handoff` invocation are now the
+  destination/authorization evidence; the actual `git push` is the
+  authoritative network and Git-authentication check. This intentionally
+  reverses part of the v0.5.1 bridge.
+- Added exact-destination preflight via
+  `git ls-remote --heads '<push-url>' 'refs/heads/<branch>'` (no matching ref
+  is valid for a new remote branch), embedded-credential redaction for remote
+  URLs, and a pre-push drift recheck that halts rather than pushing to an
+  untested destination.
+- Phase 0 review gate now records its verdict as `PASS` when it passes.
+- Phase 2.5 explicitly notes the `active.md` stub is a derived checkpoint
+  authorized by `/handoff` invocation — no separate write approval.
+- Phase 5 now refreshes the Session Worklist / Phase Guard, surfaces owed
+  verification, and ends with exactly one numbered `(Recommended)` next
+  action.
+- Permission-denial handling now forbids telling the user to change the whole
+  session's permission mode; report the denied scoped action instead.
+
+Codex-platform internals from the v0.7.0 release (`.codex/config.toml`
+permission profile, `validate_rules.py`/`validate_runtime.py` contracts,
+sandbox-escalation mechanics, codex-conversion docs) are intentionally not
+ported — OpenCode has no sandbox/permission-profile model, and `audit.sh`
+already covers the contract-validation role.
+
 ## v0.5.1 - 2026-07-16
 
 Bridged Codex Game Studios handoff-push hardening (upstream commit `0c6df429`)

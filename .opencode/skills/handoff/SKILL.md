@@ -122,7 +122,8 @@ Run Round 2 only when Round 1 caused a fix.
   quotations, user-cleared findings, and any stopped pass.
 - The gate passes only when every finding is fixed and verified, explicitly
   deferred as out of scope, or cleared by the user, with nothing blocking on
-  user input. Only then proceed to Phase 1.
+  user input. Only then proceed to Phase 1 and record the review gate verdict
+  as `PASS`.
 
 ## Phase 1: Choose The Label
 
@@ -201,7 +202,8 @@ before continuing.
 Overwrite `production/session-state/active.md` with a short pointer stub to
 `production/session-handoff.md`. It is gitignored scratch state in many
 projects; keep it coherent but do not stage it unless the repo explicitly tracks
-it.
+it. This is a derived checkpoint authorized by explicit `/handoff` invocation.
+Do not ask a separate "May I write?" for this file.
 
 ## Phase 3: Commit Handoff
 
@@ -248,23 +250,31 @@ git remote get-url --push origin
 ```
 
 Run only the command that matches the detected upstream state. Halt if the
-required push remote is missing.
+required push remote is missing. Never display embedded credentials; redact
+them if the configured URL contains any.
 
-When the push remote is on `github.com`, establish destination evidence in this
-same handoff turn immediately before the push:
+Treat the resolved push URL, current branch/upstream, and explicit `/handoff`
+invocation as the destination and user-authorization evidence. Show the push
+URL and branch in commentary immediately before the push. Do not require
+`gh auth status`, `gh api user`, or `gh repo view` as push preconditions. Git
+and the GitHub CLI may use different credentials. Optional GitHub CLI checks
+must be read-only and remain advisory. Never request or display a token. Do
+not halt before the authorized push solely because a GitHub CLI check is
+unavailable, network-blocked, unauthenticated, or inconclusive.
+
+Preflight the exact destination before pushing:
 
 ```bash
-gh auth status -h github.com
-gh api user --jq .login
-gh repo view <owner>/<repo> --json viewerPermission --jq .viewerPermission
+git ls-remote --heads '<verified-push-url>' 'refs/heads/<current-branch>'
 ```
 
-Derive `<owner>/<repo>` from the verified remote URL. Run these read-only GitHub
-checks with the network access they require; a failure from a network-restricted
-sandbox is not evidence that the stored credential is invalid. Never request or
-display a token. Continue only when the authenticated account and a `WRITE`,
-`MAINTAIN`, or `ADMIN` permission establish that the destination is authorized.
-Otherwise halt and report the exact failed check.
+An exit code of zero with no matching ref is valid for a new remote branch. If
+the preflight fails, halt Phase 4 and report Git's exact error.
+
+Immediately before the push, recheck the branch and configured upstream with
+the two `git rev-parse` commands above and verify that the branch, upstream
+state, remote, and push URL still match the destination that passed the
+preflight. If any changed, halt instead of pushing to an untested destination.
 
 Push the handoff commit only if the handoff trigger or user instruction
 authorizes it. This is a routine backup of the handoff state — not a merge
@@ -276,12 +286,17 @@ decision and not a push to main. Use exactly one of these command shapes:
 Explicit `/handoff` invocation is normal push authorization for the standard
 handoff commit; the OpenCode session will surface its native permission prompt
 for the `git push` command. The justification must state that this is the
-explicitly authorized, non-force handoff push; name the verified remote,
-authenticated account, and permission; and identify the current branch/upstream.
+explicitly authorized, non-force handoff push; name the verified push URL; and
+identify the current branch/upstream. Do not claim an authenticated account or
+repository permission unless it was actually verified. The actual `git push`
+is the authoritative network and Git-authentication check. If it fails,
+report Git's exact error and do not reinterpret a preceding GitHub CLI result
+as proof of the cause.
 
 Never force-push. If the OpenCode permission prompt or approval review denies
-the push, halt Phase 4 — report the exact denial and do not retry with another
-command shape, indirect execution, or workaround. The user may re-run the
+the push, halt Phase 4 — report the exact denied action and do not retry with
+another command shape, indirect execution, or workaround. Do not instruct the
+user to change the whole session's permission mode. The user may re-run the
 handoff push once the permission is granted; do not bypass the prompt.
 
 If the push instead fails for runtime reasons (auth token rejected, network,
@@ -293,6 +308,16 @@ if the current branch is `main`, `master`, or `develop` — in that case, ask th
 user before pushing.
 
 ## Phase 5: Report And Stop
+
+Before reporting, read or refresh the `## Session Worklist` and `## Phase Guard`
+in `production/session-state/active.md` when present. If the scratchpad is only
+a pointer stub, use the handoff document's recorded next action. Surface any
+owed verification and finish with exactly one numbered recommendation:
+
+```text
+Next action:
+1. (Recommended) [action label] - [brief reason / command]
+```
 
 Report in 15 lines or fewer:
 
