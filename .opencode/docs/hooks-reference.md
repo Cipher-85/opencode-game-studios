@@ -10,10 +10,10 @@ scripts stay nearly unchanged from the upstream project.
 | `validate-commit.sh` | `tool.execute.before` (bash) | PreToolUse (Bash) | `git commit` commands | Validates design doc sections, JSON data files, hardcoded values, TODO format |
 | `validate-push.sh` | `tool.execute.before` (bash) | PreToolUse (Bash) | `git push` commands | Warns on pushes to protected branches (develop/main) |
 | `validate-assets.sh` | `tool.execute.after` (write/edit/apply_patch) | PostToolUse (Write\|Edit) | Asset file changes | Checks naming conventions and JSON validity for files in `assets/` |
-| `session-start.sh` | `session.created` | SessionStart | Session begins | Loads sprint context, milestone, git activity; detects and previews active session state file for recovery |
+| `session-start.sh` | `session.created` | SessionStart | Session begins | Loads sprint context, milestone, git activity; records a local branch/HEAD/timestamp review baseline; previews the bounded canonical handoff before active state; recommends `/resume-from-handoff` |
 | `detect-gaps.sh` | `session.created` | SessionStart | Session begins | Detects fresh projects (suggests /start) and missing documentation when code/prototypes exist, suggests /reverse-document or /project-stage-detect |
-| `pre-compact.sh` | `experimental.session.compacting` | PreCompact | Context compression | Injects session state (active.md, modified files, WIP design docs) into `output.context[]` so it survives summarization |
-| `post-compact.sh` | `session.compacted` | PostCompact | After compaction | Reminds to restore session state from `active.md` checkpoint |
+| `pre-compact.sh` | `experimental.session.compacting` | PreCompact | Context compression | Injects session state (substantive active.md first with a bounded handoff fallback, modified files, WIP design docs) into `output.context[]` so it survives summarization; elevates the canonical handoff when active state is missing or pointer-only |
+| `post-compact.sh` | `session.compacted` | PostCompact | After compaction | Restores the same active-first/handoff-fallback order and elevates the canonical handoff when needed |
 | `session-stop.sh` | `session.idle` | Stop | Session ends | Archives `active.md` to session log and records git activity |
 | `log-agent.sh` | `tool.execute.before` (task) | SubagentStart | Agent spawned | Audit trail start — logs subagent invocation with timestamp |
 | `log-agent-stop.sh` | `tool.execute.after` (task) | SubagentStop | Agent stops | Audit trail stop — completes subagent record |

@@ -1,5 +1,68 @@
 # Changelog
 
+## v0.6.0 - 2026-07-22
+
+Bridged Codex Game Studios v0.7.0 handoff/resume continuity hardening
+(upstream `b30c2d5`) and the fresh-context handoff reviewer (upstream
+`102849f`) into the OpenCode-native port.
+
+- `/handoff` now has an explicit invocation boundary: the skill description,
+  `AGENTS.md`, and the continuity docs state that generic pause, stop,
+  checkpoint, or resume-later wording only recommends `/handoff` — the
+  review-through-push transaction requires explicit `/handoff` invocation or
+  an equally explicit commit-and-push instruction.
+- New Context Capacity Gate before Phase 0: the handoff halts with a
+  fresh-session recommendation when the active reported context percentage
+  cannot contain the full transaction; it never invents a value when the
+  percentage is unavailable.
+- Deterministic review scope: the session-start hook records a gitignored
+  `production/session-logs/session-baseline.json` (branch, starting HEAD,
+  timestamp) every session, and Phase 0 proves coverage from
+  `start_head..HEAD` ∪ staged ∪ unstaged ∪ untracked ∪ active.md-touched
+  files, with bulk-directory filesystem/tracked/staged count checks and
+  `git check-ignore` diagnosis. Sessions started before this change have no
+  baseline, so their first `/handoff` halts for explicit review-scope
+  confirmation (by design).
+- Fresh-context integrity reviewer for mixed/executable handoffs: Phase 0
+  pairs the parent self-review with exactly one built-in `explore` agent
+  spawned with a fresh context (never `task_id`), a bounded conclusion-free
+  packet, an instruction-read-only boundary, and a before-and-after
+  Git/index/worktree mutation snapshot with SHA-256 content hashes. Failure
+  or any unexplained mutation blocks the gate; a same-session downgrade
+  requires an explicit user waiver. Pure design/process-document sessions
+  remain exempt. This replaces the previous same-session-only cross-check;
+  the no-external-egress rule is preserved (no subprocess, companion plugin,
+  nested `opencode` CLI, or other model service).
+- `/handoff` now refreshes a tracked, derived `production/resume-index.md`
+  (≤10 KB): generated date + source HEAD, slice path + SHA-256 hash,
+  stage/milestone/sprint/slice labels, boot/playtest provenance, owed
+  verification, one recommended + two alternative lanes, blockers/gates.
+- `/resume-from-handoff` is bounded by default: it validates the index
+  (`fresh`/`missing`/`oversized`/`stale-hash`/`path-mismatch`/`unavailable`),
+  applies an explicit source-precedence order with visible conflicts, reads
+  at most the current 200-line/32-KiB slice section, records
+  `## Source Freshness`, and reads the written cache back before reporting
+  success. New explicit `/resume-from-handoff deep [focus]` mode reads full
+  slice history; stale state never activates deep mode automatically.
+- Session-start/pre-compact/post-compact hooks now preview the canonical
+  handoff first with bounded previews, classify active state as
+  substantive/pointer-only/missing, and elevate the handoff when active state
+  is missing or pointer-only. Local hook extras (sprint/milestone/bug scans,
+  TODO/FIXME counts, WIP design-doc scan, session logging) are preserved.
+- `audit.sh` enforces the new contracts in lockstep: `handoff-review` checks
+  authorization, capacity, scope-baseline, fresh-reviewer, and resume-index
+  phrase sets plus forbidden patterns (same-session substitution, `task_id`
+  history forks, silent fallback); `resume-contract` adds
+  bounded-read/precedence/readback phrases and an unbounded-default-slice-read
+  scan; new inline `hook-behavior` and `fixtures` (negative contract) runners;
+  `coexistence` adds an S8 check that a project-created `resume-index.md`
+  survives uninstall. The installer gitignore allowlist keeps
+  `production/resume-index.md` trackable.
+
+Codex-platform internals (`VALIDATION.md`, `config.toml` validators, manifest
+file-count bookkeeping, sandbox mechanics) are intentionally not ported, per
+the established bridging policy.
+
 ## v0.5.2 - 2026-07-20
 
 Bridged Codex Game Studios v0.7.0 handoff push-flow corrections (upstream

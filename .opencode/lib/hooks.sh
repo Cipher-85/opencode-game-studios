@@ -105,6 +105,71 @@ ccgs_first_python() {
   return 1
 }
 
+# ── Session review baseline ───────────────────────────────────
+# Writes the gitignored per-session review-scope anchor consumed by the
+# /handoff Prove The Review Scope check. Never fails the hook.
+
+ccgs_write_session_baseline() {
+  local branch="$1"
+  local start_head="$2"
+  local started_at="$3"
+  local output="$4"
+  local python_cmd
+  python_cmd="$(ccgs_first_python || true)"
+  if [ -z "$python_cmd" ]; then
+    printf 'WARNING: Python not found; session review baseline was not recorded.\n' >&2
+    return 0
+  fi
+  "$python_cmd" - "$branch" "$start_head" "$started_at" "$output" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+branch, start_head, started_at, output = sys.argv[1:]
+payload = {
+    "schema_version": 1,
+    "branch": branch or None,
+    "start_head": start_head or None,
+    "started_at": started_at,
+}
+Path(output).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+PY
+}
+
+# ── Active session state classification ───────────────────────
+# Prints: missing | pointer | substantive
+
+ccgs_active_state_kind() {
+  local state_file="$1"
+  if [ ! -f "$state_file" ]; then
+    printf 'missing\n'
+  elif grep -Eq '^## (Current Focus|Phase Guard|Source Freshness|Session Worklist|Owed Before Starting)' "$state_file" 2>/dev/null; then
+    printf 'substantive\n'
+  else
+    printf 'pointer\n'
+  fi
+}
+
+# ── Bounded file preview ──────────────────────────────────────
+# Full file when within max_lines, else first/last halves with a marker.
+
+ccgs_preview_bounded() {
+  local file="$1"
+  local max_lines="$2"
+  local total_lines
+  total_lines="$(wc -l < "$file" 2>/dev/null | tr -d ' ' || echo 0)"
+  if [ "${total_lines:-0}" -le "$max_lines" ] 2>/dev/null; then
+    cat "$file"
+    return
+  fi
+
+  local first_lines=$((max_lines / 2))
+  local last_lines=$((max_lines - first_lines))
+  head -n "$first_lines" "$file"
+  echo "... (bounded preview - $total_lines total lines)"
+  tail -n "$last_lines" "$file"
+}
+
 # ── Output helpers ──────────────────────────────────────────────
 # Advisory output goes to stderr (visible but non-blocking).
 # Deny output exits with code 2 (blocking).

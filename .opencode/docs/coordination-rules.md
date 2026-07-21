@@ -65,6 +65,23 @@ a declared spawn, do not invent, summarize, or simulate specialist/director
 verdicts. Report the missing delegation as skipped or blocked, then continue
 only where the workflow allows a partial result.
 
+### Handoff Integrity Reviewer
+
+For mixed or executable `/handoff` scope, the declared reviewer is one built-in
+`explore` agent spawned with a fresh context (never `task_id`). It is a generic
+integrity reviewer, not a custom role agent, director gate, or lead gate, and
+review mode does not filter it. The parent supplies the exact review paths, Git
+baseline, tier, approved behavioral contract, governing evidence, and
+verification results, but no authoring conclusions.
+
+The reviewer is instruction-read-only. The parent compares before-and-after
+Git/index/worktree snapshots and scoped content hashes, owns all fixes, and
+records the outcome. If the reviewer cannot run fresh, fails, or changes
+repository state, the handoff stops before continuity rotation. Do not simulate
+a reviewer or silently substitute a same-session pass. A same-session downgrade
+requires an explicit user waiver. Pure design/process-document sessions remain
+exempt unless the user requests a reviewer.
+
 ### Agent Teams (experimental — opt-in)
 Multiple independent OpenCode *sessions* running simultaneously, coordinated
 via a shared task list. Each session has its own context window and token budget.

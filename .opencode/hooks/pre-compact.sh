@@ -3,25 +3,45 @@
 # This output appears in the conversation right before compaction, ensuring
 # critical state survives the summarization process.
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# shellcheck source=../lib/hooks.sh
+source "$script_dir/../lib/hooks.sh"
+ccgs_root="$(ccgs_find_root || pwd -P)"
+
 echo "=== SESSION STATE BEFORE COMPACTION ==="
 echo "Timestamp: $(date)"
 
-# --- Active session state file ---
-STATE_FILE="production/session-state/active.md"
-if [ -f "$STATE_FILE" ]; then
+# --- Active session state file (with canonical handoff fallback) ---
+STATE_FILE="$ccgs_root/production/session-state/active.md"
+HANDOFF_FILE="$ccgs_root/production/session-handoff.md"
+STATE_KIND="$(ccgs_active_state_kind "$STATE_FILE")"
+
+if [ "$STATE_KIND" = "substantive" ]; then
     echo ""
-    echo "## Active Session State (from $STATE_FILE)"
-    STATE_LINES=$(wc -l < "$STATE_FILE" 2>/dev/null | tr -d ' ')
-    if [ "$STATE_LINES" -gt 100 ] 2>/dev/null; then
-        head -n 100 "$STATE_FILE"
-        echo "... (truncated — $STATE_LINES total lines, showing first 100)"
-    else
-        cat "$STATE_FILE"
+    echo "## Active Session State (from production/session-state/active.md)"
+    ccgs_preview_bounded "$STATE_FILE" 100
+    if [ -f "$HANDOFF_FILE" ]; then
+        echo ""
+        echo "## Canonical Handoff Fallback"
+        ccgs_preview_bounded "$HANDOFF_FILE" 60
     fi
 else
-    echo ""
-    echo "## No active session state file found"
-    echo "Consider maintaining production/session-state/active.md for better recovery."
+    if [ -f "$HANDOFF_FILE" ]; then
+        echo ""
+        echo "## Canonical Handoff Recovery (elevated)"
+        ccgs_preview_bounded "$HANDOFF_FILE" 60
+    else
+        echo ""
+        echo "## No canonical handoff found"
+        echo "Consider maintaining production/session-handoff.md via /handoff for better recovery."
+    fi
+    if [ "$STATE_KIND" = "pointer" ]; then
+        echo ""
+        echo "## Pointer-Only Active State"
+        ccgs_preview_bounded "$STATE_FILE" 20
+    else
+        echo "No active session state file found."
+    fi
 fi
 
 # --- Files modified this session (unstaged + staged + untracked) ---
@@ -75,7 +95,8 @@ echo "Context compaction occurred at $(date)." \
 
 echo ""
 echo "## Recovery Instructions"
-echo "After compaction, read $STATE_FILE to recover full working context."
+echo "After compaction, read substantive production/session-state/active.md first."
+echo "Use production/session-handoff.md as the canonical fallback; elevate it when active.md is missing or pointer-only."
 echo "Then read any files listed above that are being actively worked on."
 echo "=== END SESSION STATE ==="
 

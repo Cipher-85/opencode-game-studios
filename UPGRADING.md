@@ -15,6 +15,7 @@ Or check `README.md` for the version badge.
 
 - [Migrating from Claude Code Game Studios → OpenCode](#migrating-from-claude-code-game-studios--opencode)
 - [Upgrade Strategies](#upgrade-strategies)
+- [v0.5.x → v0.6.0](#v05x--v060)
 - [v1.0.0-beta → v1.0](#v100-beta--v10)
 - [v0.4.x → v1.0](#v04x--v10)
 - [v0.4.0 → v0.4.1](#v040--v041)
@@ -64,6 +65,38 @@ decisions, and known gaps.
 > The version-history sections below document the **upstream Claude Code**
 > project's evolution and are preserved for reference. Path references in them
 > (`.claude/...`) describe the original project layout at those points in time.
+
+---
+
+## v0.5.x → v0.6.0
+
+OpenCode-native release bridging Codex v0.7.0 handoff/resume continuity
+hardening and the fresh-context handoff reviewer. No breaking changes; no
+action needed for design, source, or production content.
+
+Behavior changes to be aware of:
+
+1. `/handoff` is now explicitly invocation-bound: asking the agent to "pause"
+   or "stop" only produces a recommendation to run `/handoff`. The
+   review-through-push transaction runs on explicit `/handoff` invocation or
+   an equally explicit commit-and-push instruction.
+2. Sessions started before this upgrade have no
+   `production/session-logs/session-baseline.json`. The first `/handoff` in
+   such a session halts before Phase 1 and asks for explicit review-scope
+   confirmation. Start a fresh session (the hook records the baseline at
+   session start) to get the deterministic scope proof.
+3. Mixed/executable handoffs now spawn one built-in `explore` agent as a
+   fresh-context integrity reviewer. If delegation is unavailable, the gate
+   blocks; you may explicitly waive the reviewer and accept a disclosed
+   same-session downgrade. Pure design/process sessions are unchanged.
+4. `/handoff` creates and commits `production/resume-index.md` (≤10 KB,
+   derived and disposable). Keep it tracked; do not edit it by hand.
+5. `/resume-from-handoff` reads at most the current 200-line/32-KiB slice
+   section by default. Use `/resume-from-handoff deep [focus]` when you
+   explicitly want full slice history.
+6. If you install into an existing repo whose `.gitignore` ignores
+   `production/`, the installer allowlist now keeps
+   `production/resume-index.md` trackable.
 
 ---
 

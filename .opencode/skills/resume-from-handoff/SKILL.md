@@ -19,12 +19,14 @@ rule in `AGENTS.md` may still require read-only `gh run` status checks when a
 CI-green verification is explicitly owed; report those outputs as observed in
 this turn if you run them.
 
-This is a deep read, not a glance. Read the full handoff, follow the playable or
-slice-state pointer declared by the handoff, cross-reference sprint status,
-stage, active state, and the workflow catalog, then compile a ranked
-`## Session Worklist`. For lightweight phase orientation use `/help`; for a full
-artifact gap audit use `/project-stage-detect`. This skill is neither: it
-operationalizes the canonical handoff narrative into the session cache.
+Default invocation is a bounded resume. Read the full handoff and compact
+index, then inspect only the bounded current section of the declared playable
+or slice source before compiling a ranked `## Session Worklist`. Use
+`/resume-from-handoff deep [focus]` only when the user explicitly requests the
+full slice history. `deep` changes read depth only; a focus argument biases
+ranking, it does not select a lane or broaden mutation authority. For
+lightweight phase orientation use `/help`; for a full artifact gap audit use
+`/project-stage-detect`.
 
 ## Step 0: Handle Missing Handoff
 
@@ -38,28 +40,59 @@ audit:
 - Full gap discovery: `/project-stage-detect`
 - Preserve future state once work exists: `/handoff`
 
-## Step 1: Read The Canonical State In Full
+## Step 1: Read Canonical State And Check Freshness
 
-Read these in order. The handoff is the source of truth.
+Use this source precedence. Surface conflicts; never silently normalize them:
+
+1. `production/session-handoff.md` for durable narrative, decisions, blockers,
+   and intended next action.
+2. `production/stage.txt` for current stage and
+   `production/sprint-status.yaml` for story status.
+3. The fresh bounded current section of the declared slice source for playable
+   state facts.
+4. A fresh `production/resume-index.md` as a derived accelerator.
+5. `production/session-state/active.md` as the lowest-priority same-session
+   cache.
+
+Read these in order:
 
 1. `production/session-handoff.md` in full. Page through it until every line has
    been read. Do not analyze from the first page alone; the Next Action, Open
    Items table, carry-flags, and Most Recent Session narrative can be spread
    across the file.
-2. The file named by the handoff's `Playable/Slice State Source` field, if it is
-   declared and exists. Do not assume a fixed path such as `src/README.md`. If
-   the field is missing, blank, `Not declared`, or points to a missing file,
-   report the slice detail as undeclared or unavailable and continue from the
-   handoff.
-3. `production/sprint-status.yaml` for per-story status if present.
-4. `production/session-state/active.md` if present. It is a local scratchpad in
-   many projects and may not exist on a fresh clone.
-5. `production/stage.txt` if present. This is the authoritative current stage
-   anchor for phase guardrails.
-6. `.opencode/docs/workflow-catalog.yaml` if present. This is the authoritative
+2. Check the size of `production/resume-index.md` before reading it. Read it in
+   full only when it is at most 10 KB. Mark an oversized index `oversized` and
+   continue without ingesting it; the index is never canonical.
+3. `production/stage.txt` if present, then `production/sprint-status.yaml` for
+   per-story status if present.
+4. `.opencode/docs/workflow-catalog.yaml` if present. This is the authoritative
    phase catalog and required-step sequence.
+5. The file named by the handoff's `Playable/Slice State Source` field, if it is
+   declared and exists. Do not assume a fixed path such as `src/README.md`.
+   Locate the current slice/version heading from the handoff or index and read
+   only that bounded current section: at most 200 lines or 32 KiB, whichever
+   comes first. Default resume must not read the entire slice source. If the
+   field is missing, blank, `Not declared`, or points to a missing file, report
+   the slice detail as undeclared or unavailable and continue from the handoff.
+6. `production/session-state/active.md` if present. It is a local scratchpad in
+   many projects and may not exist on a fresh clone.
 7. `production/session-archive.md` only to resolve a specific historical
    question the live handoff does not answer. Do not read it by default.
+
+In `deep` mode only, read the entire declared slice source after the canonical
+and guardrail files. Missing or stale index state never activates deep mode
+automatically.
+
+Check the index's recorded slice path and SHA-256 content hash against the
+current declared source. Compute the hash locally without loading the whole
+source into model context (for example `shasum -a 256 <file>`). Record it as
+`fresh`, `missing`, `oversized`, `stale-hash`, `path-mismatch`, or
+`unavailable`. Validate the recorded source HEAD as current or an ancestor of
+the current HEAD; a later HEAD is provenance to record, not a substitute for
+the slice hash. A non-ancestor is a source conflict. If the index is missing,
+oversized, or stale, report that and continue with the bounded source read. If
+authoritative sources disagree, keep the conflict visible in the briefing and
+session cache.
 
 If the user passed a focus area, bias the worklist toward it, but still surface
 the handoff's own recommended Next Action and the vertical-slice forcing
@@ -158,9 +191,10 @@ Before the user picks work, flag anything that must be checked or honored first:
   on-disk prose when project instructions require that integrity check.
 - STOP conditions recorded by the prior session.
 
-Reporting integrity: this skill runs no measurements by default, so it has no
-verified numbers of its own unless you actually produced them in this turn.
-Report handoff figures as claims, not as facts you observed.
+Reporting integrity: source size, branch/HEAD, and hash checks run in this turn
+are verified freshness evidence. This skill runs no build, test, boot, or
+playtest measurements by default. Report those handoff figures as claims, not
+as facts you observed.
 
 FIRST verification cannot be waived by choosing another lane. Run any required
 read-only FIRST check before selection when project instructions authorize it.
@@ -197,6 +231,12 @@ Source: production/session-handoff.md
 - Next gate: [current -> next phase, or none]
 - Phase mismatch: [none, unset stage, handoff drift, or out-of-phase backlog]
 
+## Source Freshness
+- Branch / HEAD: [current branch and HEAD]
+- Resume index: [fresh, missing, oversized, stale-hash, path-mismatch, or unavailable]
+- Slice source: [path + bounded/deep mode + current hash state]
+- Source conflict: [none or concise conflict that remains unresolved]
+
 ## Session Worklist
 1. (Recommended) [lane title] - [why] -> `[command-or-skill]` [extend/feed/carve-out, ~N sessions, source]
 2. [lane title] - [why] -> `[command-or-skill]` [tag, ~N sessions, source]
@@ -211,6 +251,13 @@ Source: production/session-handoff.md
 The write is part of this skill's declared workflow. Do not commit, push, or
 stage it here.
 
+After writing, read `production/session-state/active.md` back in full. Verify
+that `Source: production/session-handoff.md`, `## Source Freshness`,
+`## Phase Guard`, `## Owed Before Starting`, and the recommended
+`## Session Worklist` lane match the sources just read. Correct a derived-cache
+mistake within this one authorized file and read it back again. Do not claim
+the session cache was updated until this readback passes.
+
 ## Step 7: Present The Resume Briefing
 
 Use this shape:
@@ -221,6 +268,7 @@ Use this shape:
 Stage: <stage> | Milestone: <milestone> | Sprint: <sprint> | Slice: <version or undeclared>
 Pipeline: concept -> ... -> [current] -> ...   next gate: <gate>
 Playable/Slice State Source: <relative path, Not declared, or unavailable path>
+Resume index: <fresh, missing, oversized, stale-hash, path-mismatch, or unavailable>
 Session cache: production/session-state/active.md updated
 
 Vertical-slice forcing function:
@@ -289,6 +337,10 @@ closeouts should read or refresh the saved `## Session Worklist` in `active.md`.
 - Treat later workflow forks as new structured decisions; the resume choice
   does not pre-answer them.
 - FIRST verification remains mandatory regardless of lane choice.
+- Default resume uses bounded slice reads; only explicit `deep` mode reads full
+  slice history.
+- Read the written cache back and verify source freshness, phase guard, owed
+  verification, and the recommended lane before reporting success.
 - Make one primary recommendation. The user should leave knowing the top thing
   to do, with the rest as a ranked menu.
 - The vertical-slice forcing function overrides doc-track drift.

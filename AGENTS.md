@@ -23,6 +23,8 @@ verification-first implementation.
 - When the user asks to resume, catch up, pick up where they left off, find the
   current state, or choose the next work item from saved state, use
   `/resume-from-handoff` if `production/session-handoff.md` exists.
+- Use `/resume-from-handoff deep [focus]` only when the user explicitly requests
+  full slice-history context; ordinary resume keeps slice-source reads bounded.
 - If no handoff exists, do not infer one from another doc. Route first-session
   setup to `/start`, broad orientation to `/help`, or full gap discovery to
   `/project-stage-detect`.
@@ -30,6 +32,10 @@ verification-first implementation.
   `production/session-state/active.md`, surface owed verification, and present
   the top valid lane as a numbered next-action prompt. Suggest `/handoff` only
   when the current state should be durable for a future session.
+- Generic requests to pause, stop, or resume later authorize only that
+  recommendation. The review, continuity, commit, and push transaction requires
+  explicit `/handoff` invocation or an equally explicit instruction to commit
+  and push the handoff.
 - Do not close out or ask for a user-selected next action while an invoked
   workflow still has automatic read-only phases remaining. Readbacks, scans,
   self-checks, candidate discovery, context gathering, and validation summaries
@@ -98,12 +104,16 @@ Question -> Options -> Decision -> Draft -> Approval.
   updates, source edits, commits, pushes, branch changes, builds, boot smoke,
   mutating `gh`, or writes to any path other than
   `production/session-state/active.md`.
-- `/handoff` exception: explicit invocation of the OpenCode-native `/handoff`
-  skill counts as user approval for that skill's declared review gate and
-  handoff workflow only. The review must stay inside the active OpenCode
-  session; it must not launch a subprocess reviewer, spawn a Task subagent
-  reviewer, use a companion plugin, call another model service, or create an
+- `/handoff` or an equally explicit instruction to commit and push the handoff
+  authorizes review-through-push. Generic pause/stop wording does not. Each
+  pass gets one built-in `explore` spawn with a fresh context (never
+  `task_id`). This instruction-read-only reviewer gets evidence without the
+  author's conclusions and a before-and-after repository mutation snapshot. No
+  subprocess, companion, nested `opencode` CLI, other model service, or
   external data-egress approval.
+- It is not a custom/director/lead role. If review or its snapshot fails, stop
+  mixed/executable handoff unless the user explicitly waives the independent
+  reviewer and accepts a disclosed same-session downgrade.
 - The exception authorizes confident, intent-preserving review fixes only in
   files already created or materially modified during the session. Those fixes
   may not introduce new intent, architecture, game-feel, balance, or scope
@@ -113,8 +123,9 @@ Question -> Options -> Decision -> Draft -> Approval.
   stop for user direction before continuity rotation, commit, or push.
 - Once the review gate passes, the exception authorizes updating
   `production/session-handoff.md`, `production/session-archive.md`, and
-  `production/session-state/active.md`; staging relevant uncommitted changes by
-  path; creating the standard handoff commit; and pushing the current branch.
+  `production/resume-index.md`, plus `production/session-state/active.md`;
+  staging relevant uncommitted changes by path; creating the standard handoff
+  commit; and pushing the current branch.
 - The `/handoff` exception does not authorize design/game-feel/balance
   decisions, new source edits outside the continuity files, writes to undeclared
   files, branch switching, force-pushes, or `--no-verify` / amend workarounds.
@@ -130,6 +141,8 @@ Question -> Options -> Decision -> Draft -> Approval.
   workflow. It does not grant any write, build, smoke, `gh`, commit, push,
   branch, design, game-feel, balance, or other mutation authority that the
   selected workflow does not already declare.
+- The `deep` argument authorizes a full slice-history read only; it does not
+  select a lane or broaden mutation authority.
 - No commits without user instruction.
 
 See `docs/COLLABORATIVE-DESIGN-PRINCIPLE.md` for full protocol and examples.
@@ -247,6 +260,8 @@ For code, tests, and tools:
   not be treated as the durable project record.
 - Preserve session continuity in `production/session-handoff.md`; archive only
   when the continuity docs call for it.
+- Treat `production/resume-index.md` as a tracked, disposable accelerator
+  derived from the handoff and current slice state, never as canonical truth.
 - Keep generated caches, local-only logs, and transient evidence out of tracked
   runtime instructions unless a doc explicitly says otherwise.
 - Full rules: `.opencode/docs/file-lifecycle.md`.

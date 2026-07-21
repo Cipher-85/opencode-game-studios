@@ -12,8 +12,12 @@
 #   checkpoint   Check active.md silent-checkpoint contract on skills/agents
 #   playtest     Check playtest-focus contract on root/continuity/skill surfaces
 #   bug-lifecycle Check bug lifecycle consolidation contract on bug-report/triage
-#   handoff-review Check handoff two-round review-gate contract on handoff/AGENTS.md
-#   resume-contract Check resume lane-selection boundary on resume-from-handoff
+#   handoff-review Check handoff review-gate, explicit authorization, capacity,
+#                  scope-baseline, fresh-context reviewer, and resume-index contracts
+#   resume-contract Check resume lane-selection, bounded-read, precedence, and
+#                  readback contracts on resume-from-handoff
+#   hook-behavior  Run behavioral fixtures against session-start/pre/post-compact hooks
+#   fixtures       Run negative contract fixtures (must be detected as invalid)
 #   runtime      Check for stale references
 #   config       Validate opencode.json
 #   hooks        Test hook scripts
@@ -30,7 +34,7 @@ command="${1:-all}"
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --root) root="$(cd "$2" && pwd -P)"; shift 2 ;;
-    all|agents|skills|runtime|config|hooks|smoke|release|closeout|checkpoint|playtest|bug-lifecycle|handoff-review|resume-contract|install-safety|coexistence|smoke-headless) command="$1"; shift ;;
+    all|agents|skills|runtime|config|hooks|smoke|release|closeout|checkpoint|playtest|bug-lifecycle|handoff-review|resume-contract|hook-behavior|fixtures|install-safety|coexistence|smoke-headless) command="$1"; shift ;;
     *) shift ;;
   esac
 done
@@ -332,78 +336,236 @@ run_bug_lifecycle() {
 
 run_handoff_review() {
   printf '\n── Handoff Review Gate Contract ──────────────────────────\n'
-  local checked=0
+  if python3 - "$root" <<'PY'
+import os, re, sys
+root = sys.argv[1]
+fails = 0
 
-  # --- handoff SKILL.md required phrases ---
-  local skill="$root/.opencode/skills/handoff/SKILL.md"
-  checked=$((checked + 1))
-  if [ ! -f "$skill" ]; then fail "handoff/SKILL.md (missing)"; else
-    local skill_norm; skill_norm=$(tr -s '[:space:]' ' ' < "$skill")
-    local -a req=(
-      "## Round 1"
-      "## Round 2"
-      "\`STANDARD\`"
-      "\`ADVERSARIAL\`"
-      "Foundation ADR cluster closure"
-      "pure design/process-document"
-      "self-review is sufficient and the native cross-check is skipped"
-      "Mixed code-and-document changes are not exempt"
-      "distinct native review pass"
-      "current OpenCode session"
-      "\`HIGH\`, \`MEDIUM\`, or \`LOW\`"
-      "\`CLEAN\`"
-      "\`path:line\`"
-      "If uncertain whether the work meets a major trigger, use \`STANDARD\`"
-      "quoted verbatim"
-      "stop before Phase 1"
-      "second native cross-check"
-      "\`HIGH\` finding"
-      "cross-cutting executable behavior"
-      "Trivial and confidently intent-preserving only"
-      "Any non-trivial fix"
-      "Do not run a third pass"
-      "three native review passes"
-      "fourth native review pass"
-      "active reported context percentage"
-      "review audit trail"
-      "every finding"
-      "Only then proceed to Phase 1"
-    )
-    local missing=() p
-    for p in "${req[@]}"; do
-      grep -qF "$p" <<< "$skill_norm" 2>/dev/null || missing+=("$p")
-    done
-    if [ "${#missing[@]}" -eq 0 ]; then
-      pass "handoff/SKILL.md (review gate contract)"
-    else
-      fail "handoff/SKILL.md missing: ${missing[*]}"
-    fi
-  fi
+SKILL = ".opencode/skills/handoff/SKILL.md"
+AGENTS = "AGENTS.md"
 
-  # --- AGENTS.md required phrases ---
-  local agents="$root/AGENTS.md"
-  checked=$((checked + 1))
-  if [ ! -f "$agents" ]; then fail "AGENTS.md (missing)"; else
-    local agents_norm; agents_norm=$(tr -s '[:space:]' ' ' < "$agents")
-    local -a req2=(
-      "files already created or materially modified during the session"
-      "intent-preserving review fixes"
-      "active OpenCode session"
-      "Round-two non-trivial findings"
-      "external data-egress approval"
-      "new intent, architecture, game-feel, balance, or scope decisions"
-    )
-    local missing2=() p2
-    for p2 in "${req2[@]}"; do
-      grep -qF "$p2" <<< "$agents_norm" 2>/dev/null || missing2+=("$p2")
-    done
-    if [ "${#missing2[@]}" -eq 0 ]; then
-      pass "AGENTS.md (handoff review exception)"
-    else
-      fail "AGENTS.md missing: ${missing2[*]}"
-    fi
+def read_raw(rel):
+    path = os.path.join(root, rel)
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf-8") as fh:
+        return fh.read()
+
+def norm(rel):
+    raw = read_raw(rel)
+    return re.sub(r"\s+", " ", raw) if raw is not None else None
+
+skill_raw = read_raw(SKILL)
+skill = re.sub(r"\s+", " ", skill_raw) if skill_raw is not None else None
+agents = norm(AGENTS)
+
+CORE_PHRASES = (
+    "## Round 1",
+    "## Round 2",
+    "`STANDARD`",
+    "`ADVERSARIAL`",
+    "Foundation ADR cluster closure",
+    "pure design/process-document",
+    "self-review is sufficient and the fresh-context reviewer is skipped",
+    "Mixed code-and-document changes are not exempt",
+    "built-in `explore`",
+    "fresh context",
+    "`HIGH`, `MEDIUM`, or `LOW`",
+    "`CLEAN`",
+    "`path:line`",
+    "If uncertain whether the work meets a major trigger, use `STANDARD`",
+    "quoted verbatim",
+    "stop before Phase 1",
+    "another fresh reviewer pass",
+    "`HIGH` finding",
+    "cross-cutting executable behavior",
+    "Trivial and confidently intent-preserving only",
+    "Any non-trivial fix",
+    "Do not run a third pass",
+    "three reviewer invocations",
+    "fourth reviewer invocation",
+    "active reported context percentage",
+    "review audit trail",
+    "every finding",
+    "Only then proceed to Phase 1",
+)
+
+AUTH_PHRASES = {
+    SKILL: (
+        "equally explicit instruction to commit and push this handoff",
+        "Generic requests to pause, stop, checkpoint",
+        "they are not commit or push authority",
+    ),
+    AGENTS: (
+        "equally explicit instruction to commit and push the handoff",
+        "Generic pause/stop wording does not",
+    ),
+}
+
+CAPACITY_PHRASES = (
+    "## Context Capacity Gate",
+    "active reported context percentage",
+    "estimated additional percentage cost",
+    "hardcoded percentage threshold",
+    "If the active percentage is unavailable",
+)
+
+SCOPE_PHRASES = (
+    "production/session-logs/session-baseline.json",
+    "starting HEAD",
+    "git merge-base --is-ancestor <starting-head> HEAD",
+    "git diff --name-only <starting-head>..HEAD",
+    "git diff --cached --name-only",
+    "git ls-files --others --exclude-standard",
+    "files it records as touched or in progress",
+    "filesystem file count",
+    "tracked count",
+    "staged count",
+    "git check-ignore -v -- <path>",
+)
+
+FRESH_REVIEWER_PHRASES = (
+    "## Fresh-Context Reviewer Contract",
+    "exact deduplicated review path list",
+    "starting HEAD",
+    "current HEAD",
+    "user-approved behavioral contract and acceptance criteria",
+    "Applicable project rules, ADRs, GDDs",
+    "Verification evidence already produced",
+    "Do not pass authoring conclusions",
+    "instruction-read-only",
+    "must not edit or write files",
+    "git status --porcelain=v2 --untracked-files=all",
+    "git diff --binary --no-ext-diff",
+    "git diff --cached --binary --no-ext-diff",
+    "SHA-256 content hash",
+    "before and after results exactly",
+    "Any unexplained mutation blocks the gate",
+    "unavailable delegation tool",
+    "absent built-in `explore` agent",
+    "inability to spawn the reviewer with a fresh context",
+    "do not simulate or silently replace the reviewer",
+    "explicitly waive the independent reviewer",
+    "another fresh reviewer pass",
+    "do not reuse the first reviewer",
+    "no authoring conclusions or narrative defending the fix",
+    "reviewer type",
+    "mutation snapshot outcome",
+)
+
+INDEX_PHRASES = (
+    "production/resume-index.md",
+    "derived, disposable accelerator",
+    "Generated date and source HEAD",
+    "SHA-256 content hash",
+    "Last reported or verified boot/playtest with provenance",
+    "Owed verification",
+    "two alternative lanes",
+    "Blockers/gates",
+    "at most 10 KB",
+)
+
+AGENTS_PHRASES = (
+    "files already created or materially modified during the session",
+    "intent-preserving review fixes",
+    "built-in `explore`",
+    "fresh context",
+    "before-and-after repository mutation snapshot",
+    "Round-two non-trivial findings",
+    "external data-egress approval",
+    "new intent, architecture, game-feel, balance, or scope decisions",
+)
+
+FRESH_REVIEWER_SURFACES = {
+    ".opencode/docs/coordination-rules.md": (
+        "## Handoff Integrity Reviewer",
+        "built-in `explore`",
+        "fresh context",
+        "not a custom role agent, director gate, or lead gate",
+        "Do not simulate a reviewer or silently substitute a same-session pass",
+    ),
+    ".opencode/docs/context-management.md": (
+        "fresh context",
+        "fresh integrity reviewer",
+        "omits the author's conclusions",
+    ),
+    ".opencode/docs/session-continuity.md": (
+        "fresh built-in `explore` integrity review",
+        "fresh context",
+        "before-and-after mutation snapshot",
+        "explicit user waiver",
+    ),
+}
+
+FORBIDDEN_PATTERNS = (
+    (re.compile(r"(?i)fresh same-session reasoning pass,\s*not an independent reviewer"),
+     "same-session reviewer substitution"),
+    (re.compile(r"(?i)\btask_id\s*[:=]"),
+     "reviewer history fork via task_id"),
+    (re.compile(r"(?i)if the (?:reviewer|delegation)[^.\n]{0,80}(?:unavailable|blocked|fails?)[^.\n]{0,80}(?:continue|proceed)[^.\n]{0,80}same-session"),
+     "silent reviewer fallback"),
+)
+
+def check(label, text, phrases):
+    global fails
+    missing = [p for p in phrases if p not in text]
+    if missing:
+        print(f"  ! {label}: missing phrase(s): " + ", ".join(missing))
+        fails += 1
+
+if skill is None:
+    print(f"  ! {SKILL}: missing file")
+    fails += 1
+else:
+    check(f"{SKILL} (review gate)", skill, CORE_PHRASES)
+    check(f"{SKILL} (context capacity gate)", skill, CAPACITY_PHRASES)
+    check(f"{SKILL} (review scope baseline contract)", skill, SCOPE_PHRASES)
+    check(f"{SKILL} (fresh-context reviewer contract)", skill, FRESH_REVIEWER_PHRASES)
+    check(f"{SKILL} (compact resume-index contract)", skill, INDEX_PHRASES)
+    m = re.match(r"^---\n(.*?)\n---", skill_raw, re.S)
+    desc = ""
+    if m:
+        d = re.search(r"description:\s*[\"']?(.*?)[\"']?\s*$", m.group(1), re.M)
+        desc = (d.group(1) if d else "").lower()
+    if any(w in desc for w in ("pause", "stop", "checkpoint", "resume later")):
+        print(f"  ! {SKILL}: explicit invocation boundary is ambiguous in frontmatter description")
+        fails += 1
+    for rx, msg in FORBIDDEN_PATTERNS:
+        for match in rx.finditer(skill_raw):
+            line_no = skill_raw.count("\n", 0, match.start()) + 1
+            print(f"  ! {SKILL}:{line_no}: {msg}")
+            fails += 1
+
+for rel, phrases in AUTH_PHRASES.items():
+    text = skill if rel == SKILL else agents
+    if text is None:
+        print(f"  ! {rel}: missing explicit invocation boundary surface")
+        fails += 1
+    else:
+        check(f"{rel} (explicit invocation boundary)", text, phrases)
+
+if agents is None:
+    print(f"  ! {AGENTS}: missing file")
+    fails += 1
+else:
+    check(f"{AGENTS} (handoff review exception)", agents, AGENTS_PHRASES)
+
+for rel, phrases in FRESH_REVIEWER_SURFACES.items():
+    text = norm(rel)
+    if text is None:
+        print(f"  ! {rel}: missing fresh-context reviewer contract surface")
+        fails += 1
+    else:
+        check(f"{rel} (fresh-context reviewer contract)", text, phrases)
+
+print(f"  handoff review contract checked, {fails} violation(s)")
+sys.exit(1 if fails else 0)
+PY
+  then
+    pass "handoff review contract satisfied"
+  else
+    fail "handoff review contract violations"
   fi
-  printf '  %d handoff-review surfaces checked\n' "$checked"
 }
 
 run_resume_contract() {
@@ -433,11 +595,51 @@ required = (
     ".opencode/docs/workflow-catalog.yaml",
     "production/session-state/active.md",
 )
-missing = [p for p in required if p not in norm]
-if missing:
-    print(f"  ! {rel}: missing phrase(s): " + ", ".join(missing))
 
-fails = len(missing)
+BOUNDED_PHRASES = (
+    "/resume-from-handoff deep [focus]",
+    "bounded current section",
+    "at most 200 lines or 32 KiB",
+    "Default resume must not read the entire slice source",
+    "Missing or stale index state never activates deep mode automatically",
+    "production/resume-index.md",
+    "Mark an oversized index `oversized`",
+    "SHA-256 content hash",
+    "Compute the hash locally without loading the whole source into model context",
+    "stale-hash",
+)
+
+READBACK_PHRASES = (
+    "read `production/session-state/active.md` back in full",
+    "## Source Freshness",
+    "## Owed Before Starting",
+    "recommended `## Session Worklist` lane",
+    "Do not claim the session cache was updated until this readback passes",
+)
+
+PRECEDENCE_PHRASES = (
+    "Use this source precedence",
+    "durable narrative, decisions, blockers",
+    "for current stage",
+    "for story status",
+    "fresh bounded current section",
+    "derived accelerator",
+    "lowest-priority same-session cache",
+    "Surface conflicts; never silently normalize them",
+)
+
+fails = 0
+for label, phrases in (
+    ("lane-selection contract", required),
+    ("bounded default slice-read contract", BOUNDED_PHRASES),
+    ("cache readback contract", READBACK_PHRASES),
+    ("source precedence contract", PRECEDENCE_PHRASES),
+):
+    missing = [p for p in phrases if p not in norm]
+    if missing:
+        print(f"  ! {rel}: missing {label} phrase(s): " + ", ".join(missing))
+        fails += len(missing)
+
 for i, line in enumerate(text.splitlines(), start=1):
     lower = line.lower()
     starts_lane = re.search(r"\b(?:start|begin|enter)\b", lower)
@@ -450,6 +652,19 @@ for i, line in enumerate(text.splitlines(), start=1):
     if starts_lane and bypasses and not forbidden:
         print(f"  ! {rel}:{i}: automatic lane startup forbidden; "
               "pause for selection boundary")
+        fails += 1
+    reads_full_slice = (
+        re.search(r"\bread\b.*\b(?:entire|full|all)\b.*\b(?:slice|playable)[ -]?(?:source|history)?\b", lower)
+        or re.search(r"\bread\b.*\b(?:slice|playable)[ -]?(?:source|history)?\b.*\b(?:entire|full|all)\b", lower)
+        or re.search(r"\b(?:entire|full|all)\b.*\b(?:slice|playable)[ -]?(?:source|history)?\b.*\bread\b", lower)
+    )
+    deep_only = "deep" in lower
+    explicitly_bounded = any(
+        phrase in lower for phrase in ("do not", "must not", "never", "only explicit", "only in")
+    )
+    if reads_full_slice and not deep_only and not explicitly_bounded:
+        print(f"  ! {rel}:{i}: unbounded default slice read is forbidden; "
+              "reserve the full slice history for explicit deep mode")
         fails += 1
 
 print(f"  resume-from-handoff checked, {fails} violation(s)")
@@ -651,6 +866,232 @@ run_install_safety() {
   return $problems
 }
 
+run_hook_behavior() {
+  printf '\n── Hook Behavior Fixtures ────────────────────────────────\n'
+  if python3 - "$root" <<'PY'
+import json, os, subprocess, sys, tempfile
+from pathlib import Path
+
+root = Path(sys.argv[1])
+errors = []
+
+def run_hook(tmp_root, name):
+    env = dict(os.environ)
+    env.pop("CCGS_ROOT", None)
+    return subprocess.run(
+        ["bash", str(root / ".opencode" / "hooks" / name)],
+        cwd=tmp_root, env=env, capture_output=True, text=True, timeout=60,
+    )
+
+def git(tmp_root, *args):
+    return subprocess.run(["git", "-C", str(tmp_root), *args],
+                          check=True, capture_output=True, text=True)
+
+def git_init(tmp_root):
+    git(tmp_root, "init", "-q")
+
+def git_commit_fixture(tmp_root):
+    git(tmp_root, "config", "user.name", "CCGS Fixture")
+    git(tmp_root, "config", "user.email", "fixture@example.invalid")
+    (tmp_root / ".fixture").write_text("fixture\n", encoding="utf-8")
+    git(tmp_root, "add", ".fixture")
+    git(tmp_root, "commit", "-qm", "fixture baseline")
+    return git(tmp_root, "rev-parse", "HEAD").stdout.strip()
+
+def write_handoff(tmp_root, marker="HANDOFF FIXTURE"):
+    p = tmp_root / "production" / "session-handoff.md"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(f"# Session Handoff\n\nCurrent Stage: production\nNext Action: {marker}\n",
+                 encoding="utf-8")
+
+def write_active(tmp_root, marker="ACTIVE FIXTURE", pointer_only=False):
+    p = tmp_root / "production" / "session-state" / "active.md"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    if pointer_only:
+        text = "# Active Session State\n\nSource: production/session-handoff.md\n"
+    else:
+        text = ("# Active Session State\n\nSource: production/session-handoff.md\n\n"
+                "## Current Focus\n"
+                f"- Task: {marker}\n\n"
+                "## Session Worklist\n"
+                "1. (Recommended) Fixture lane\n")
+    p.write_text(text, encoding="utf-8")
+
+def assert_order(label, out, first, second):
+    a, b = out.find(first), out.find(second)
+    if a < 0 or b < 0 or a >= b:
+        errors.append(f"{label}: expected {first!r} before {second!r}")
+
+scenarios = 0
+
+with tempfile.TemporaryDirectory(prefix="ccgs-hook-behavior-") as t:
+    scenarios += 1
+    tr = Path(t); git_init(tr); head = git_commit_fixture(tr)
+    write_handoff(tr); write_active(tr)
+    r = run_hook(tr, "session-start.sh")
+    if r.returncode != 0:
+        errors.append(f"session-start rc={r.returncode}: {r.stderr!r}")
+    if "ACTIVE SESSION STATE DETECTED" not in r.stdout:
+        errors.append("session-start missing substantive active banner")
+    assert_order("session-start handoff precedence", r.stdout, "HANDOFF FIXTURE", "ACTIVE FIXTURE")
+    if "/resume-from-handoff" not in r.stdout:
+        errors.append("session-start did not recommend /resume-from-handoff")
+    try:
+        baseline = json.loads((tr / "production" / "session-logs" / "session-baseline.json").read_text(encoding="utf-8"))
+        if baseline.get("start_head") != head or not baseline.get("branch") or not baseline.get("started_at"):
+            errors.append(f"session-start baseline contents wrong: {baseline!r}")
+    except Exception as exc:
+        errors.append(f"session-start baseline missing/invalid: {exc}")
+
+with tempfile.TemporaryDirectory(prefix="ccgs-hook-behavior-") as t:
+    scenarios += 1
+    tr = Path(t); git_init(tr); git_commit_fixture(tr)
+    write_handoff(tr, "HANDOFF ONLY")
+    r = run_hook(tr, "session-start.sh")
+    if "HANDOFF ONLY" not in r.stdout:
+        errors.append("session-start handoff-only missing handoff preview")
+    if "ACTIVE SESSION STATE DETECTED" in r.stdout:
+        errors.append("session-start handoff-only invented substantive active state")
+
+with tempfile.TemporaryDirectory(prefix="ccgs-hook-behavior-") as t:
+    scenarios += 1
+    tr = Path(t); git_init(tr); git_commit_fixture(tr)
+    write_handoff(tr, "HANDOFF POINTER PRIMARY"); write_active(tr, pointer_only=True)
+    r = run_hook(tr, "session-start.sh")
+    if "POINTER-ONLY ACTIVE STATE DETECTED" not in r.stdout:
+        errors.append("session-start missing pointer-only banner")
+    assert_order("session-start pointer precedence", r.stdout,
+                 "HANDOFF POINTER PRIMARY", "POINTER-ONLY ACTIVE STATE DETECTED")
+
+with tempfile.TemporaryDirectory(prefix="ccgs-hook-behavior-") as t:
+    scenarios += 1
+    tr = Path(t); git_init(tr)
+    write_handoff(tr, "COMPACT HANDOFF FALLBACK"); write_active(tr, "COMPACT ACTIVE PRIMARY")
+    r = run_hook(tr, "pre-compact.sh")
+    if "SESSION STATE BEFORE COMPACTION" not in r.stdout:
+        errors.append("pre-compact missing header")
+    assert_order("pre-compact active precedence", r.stdout,
+                 "COMPACT ACTIVE PRIMARY", "COMPACT HANDOFF FALLBACK")
+    r = run_hook(tr, "post-compact.sh")
+    if "Context Restored After Compaction" not in r.stdout:
+        errors.append("post-compact missing header")
+    assert_order("post-compact active precedence", r.stdout,
+                 "COMPACT ACTIVE PRIMARY", "COMPACT HANDOFF FALLBACK")
+
+with tempfile.TemporaryDirectory(prefix="ccgs-hook-behavior-") as t:
+    scenarios += 1
+    tr = Path(t); git_init(tr)
+    write_handoff(tr, "COMPACT HANDOFF ELEVATED"); write_active(tr, pointer_only=True)
+    r = run_hook(tr, "pre-compact.sh")
+    if "Canonical Handoff Recovery (elevated)" not in r.stdout:
+        errors.append("pre-compact missing elevated handoff")
+    assert_order("pre-compact pointer precedence", r.stdout,
+                 "COMPACT HANDOFF ELEVATED", "Pointer-Only Active State")
+    r = run_hook(tr, "post-compact.sh")
+    if "Canonical Handoff Recovery (elevated)" not in r.stdout:
+        errors.append("post-compact missing elevated handoff")
+    assert_order("post-compact pointer precedence", r.stdout,
+                 "COMPACT HANDOFF ELEVATED", "Pointer-Only Active State")
+
+for e in errors:
+    print(f"  ! {e}")
+print(f"  hook behavior fixtures: {len(errors)} error(s) across {scenarios} scenario(s)")
+sys.exit(1 if errors else 0)
+PY
+  then
+    pass "hook behavior fixtures satisfied"
+  else
+    fail "hook behavior fixture violations"
+  fi
+}
+
+run_negative_fixtures() {
+  printf '\n── Negative Contract Fixtures ────────────────────────────\n'
+  if python3 - "$root" <<'PY'
+import os, re, sys
+root = sys.argv[1]
+base = os.path.join(root, ".opencode", "tests", "fixtures")
+errors = []
+
+def read(rel):
+    path = os.path.join(base, rel)
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf-8") as fh:
+        return fh.read()
+
+h = read("invalid-handoff-contract/.opencode/skills/handoff/SKILL.md")
+if h is None:
+    errors.append("invalid-handoff-contract fixture missing")
+else:
+    norm = re.sub(r"\s+", " ", h)
+    m = re.match(r"^---\n(.*?)\n---", h, re.S)
+    desc = ""
+    if m:
+        d = re.search(r"description:\s*[\"']?(.*?)[\"']?\s*$", m.group(1), re.M)
+        desc = (d.group(1) if d else "").lower()
+    if not any(w in desc for w in ("pause", "stop", "checkpoint", "resume later")):
+        errors.append("handoff fixture: description must trip the invocation-boundary check")
+    for phrase in ("## Context Capacity Gate",
+                   "production/session-logs/session-baseline.json",
+                   "## Fresh-Context Reviewer Contract",
+                   "production/resume-index.md"):
+        if phrase in norm:
+            errors.append(f"handoff fixture: must lack contract phrase {phrase!r}")
+    forbidden = {
+        "same-session reviewer substitution": r"(?i)fresh same-session reasoning pass,\s*not an independent reviewer",
+        "reviewer history fork via task_id": r"(?i)\btask_id\s*[:=]",
+        "silent reviewer fallback": r"(?i)if the (?:reviewer|delegation)[^.\n]{0,80}(?:unavailable|blocked|fails?)[^.\n]{0,80}(?:continue|proceed)[^.\n]{0,80}same-session",
+    }
+    for label, pat in forbidden.items():
+        if not re.search(pat, h):
+            errors.append(f"handoff fixture: must trip forbidden pattern {label!r}")
+
+r = read("invalid-resume-contract/.opencode/skills/resume-from-handoff/SKILL.md")
+if r is None:
+    errors.append("invalid-resume-contract fixture missing")
+else:
+    norm = re.sub(r"\s+", " ", r)
+    for phrase in ("## Source Freshness",
+                   "at most 200 lines or 32 KiB",
+                   "production/resume-index.md"):
+        if phrase in norm:
+            errors.append(f"resume fixture: must lack contract phrase {phrase!r}")
+    trips_unbounded = False
+    trips_startup = False
+    for line in r.splitlines():
+        lower = line.lower()
+        reads_full_slice = (
+            re.search(r"\bread\b.*\b(?:entire|full|all)\b.*\b(?:slice|playable)[ -]?(?:source|history)?\b", lower)
+            or re.search(r"\bread\b.*\b(?:slice|playable)[ -]?(?:source|history)?\b.*\b(?:entire|full|all)\b", lower)
+            or re.search(r"\b(?:entire|full|all)\b.*\b(?:slice|playable)[ -]?(?:source|history)?\b.*\bread\b", lower)
+        )
+        if reads_full_slice and "deep" not in lower and not any(
+            p in lower for p in ("do not", "must not", "never", "only explicit", "only in")
+        ):
+            trips_unbounded = True
+        starts_lane = re.search(r"\b(?:start|begin|enter)\b", lower)
+        bypasses = any(w in lower for w in ("automatically", "immediately", "without waiting", "without selection"))
+        allowed = any(w in lower for w in ("do not", "don't", "never", "must not", "cannot"))
+        if starts_lane and bypasses and not allowed:
+            trips_startup = True
+    if not trips_unbounded:
+        errors.append("resume fixture: must trip the unbounded default slice-read check")
+    if not trips_startup:
+        errors.append("resume fixture: must trip the automatic lane startup check")
+
+for e in errors:
+    print(f"  ! {e}")
+print(f"  negative fixtures: {len(errors)} error(s) across 2 fixture(s)")
+sys.exit(1 if errors else 0)
+PY
+  then
+    pass "negative fixtures detected as invalid"
+  else
+    fail "negative fixture detection gaps"
+  fi
+}
+
 run_coexistence() {
   printf '\n── Coexistence / Installer Matrix ───────────────────────────\n'
   printf '   (advisory — runs a real install/uninstall matrix in a temp dir)\n'
@@ -723,6 +1164,14 @@ run_coexistence() {
     pass "S7 rollback: SKIP (chmod 444 unsupported)"
   fi
 
+  # S8 project-created resume-index survives uninstall
+  T="$base/s8"; mkdir -p "$T"
+  bash "$inst" $MF "$T" >/dev/null 2>&1 || true
+  mkdir -p "$T/production"
+  printf '# Project-owned resume index\n' > "$T/production/resume-index.md"
+  rc=0; out="$(bash "$uninst" "$T" 2>&1)" || rc=$?
+  if [ -f "$T/production/resume-index.md" ]; then pass "S8 resume-index survives uninstall"; else fail "S8 uninstall removed project-created resume-index"; fi
+
   rm -rf "$base" 2>/dev/null || true
   return 0
 }
@@ -770,6 +1219,8 @@ case "$command" in
     run_config
     run_install_safety
     run_hooks
+    run_hook_behavior
+    run_negative_fixtures
     run_smoke
     ;;
   agents)   run_agents ;;
@@ -780,6 +1231,8 @@ case "$command" in
   bug-lifecycle) run_bug_lifecycle ;;
   handoff-review) run_handoff_review ;;
   resume-contract) run_resume_contract ;;
+  hook-behavior) run_hook_behavior ;;
+  fixtures)  run_negative_fixtures ;;
   runtime)  run_runtime ;;
   config)   run_config ;;
   install-safety) run_install_safety ;;
@@ -788,7 +1241,7 @@ case "$command" in
   hooks)    run_hooks ;;
   smoke)    run_smoke ;;
   release)  run_release ;;
-    *) printf 'Unknown command: %s\nAvailable: all, agents, skills, closeout, checkpoint, playtest, bug-lifecycle, handoff-review, resume-contract, runtime, config, install-safety, coexistence, smoke-headless, hooks, smoke, release\n' "$command" >&2; exit 2 ;;
+    *) printf 'Unknown command: %s\nAvailable: all, agents, skills, closeout, checkpoint, playtest, bug-lifecycle, handoff-review, resume-contract, hook-behavior, fixtures, runtime, config, install-safety, coexistence, smoke-headless, hooks, smoke, release\n' "$command" >&2; exit 2 ;;
 esac
 
 printf '\n── Result: %d error(s) ──\n' "$errors"

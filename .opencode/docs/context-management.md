@@ -87,7 +87,11 @@ Subagents run in their own context window and return only summaries:
 - **Use subagents** when investigating across multiple files, exploring unfamiliar code,
   or doing research that would consume >5k tokens of file reads
 - **Use direct reads** when you know exactly which 1-2 files to check
-- Subagents do not inherit conversation history — provide full context in the prompt
+- Context inheritance depends on the spawn contract. OpenCode Task spawns start
+  with a fresh context by default; passing `task_id` resumes the same subagent
+  session with its prior history. `/handoff` uses a default-fresh spawn (never
+  `task_id`) for its fresh integrity reviewer and omits the author's conclusions
+  so the reviewer independently evaluates the scoped files and contract.
 
 ## Compaction Instructions
 
@@ -111,7 +115,9 @@ conversation history is secondary.
 
 If a session dies ("prompt too long") or you start a new session to continue work:
 
-1. The `session-start.sh` hook will detect and preview `active.md` automatically
-2. Read the full state file for context
+1. The `session-start.sh` hook previews the canonical handoff first, then
+   substantive `active.md` automatically
+2. Read a substantive `production/session-state/active.md` if it exists; when it
+   is missing or pointer-only, elevate the canonical handoff
 3. Read the partially-completed file(s) listed in the state
 4. Continue from the next incomplete section or task

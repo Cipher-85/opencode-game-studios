@@ -4,10 +4,23 @@
 #
 # Input schema (SessionStart): No stdin input
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# shellcheck source=../lib/hooks.sh
+source "$script_dir/../lib/hooks.sh"
+ccgs_root="$(ccgs_find_root || pwd -P)"
+
 echo "=== OpenCode Game Studios — Session Context ==="
 
 # Current branch
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
+# Per-session review baseline (gitignored) consumed by the /handoff scope proof
+START_HEAD=$(git -C "$ccgs_root" rev-parse HEAD 2>/dev/null || true)
+STARTED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+mkdir -p "$ccgs_root/production/session-logs" 2>/dev/null || true
+ccgs_write_session_baseline "$BRANCH" "$START_HEAD" "$STARTED_AT" \
+    "$ccgs_root/production/session-logs/session-baseline.json"
+
 if [ -n "$BRANCH" ]; then
     echo "Branch: $BRANCH"
 
@@ -54,21 +67,35 @@ if [ -d "src" ]; then
     fi
 fi
 
-# --- Active session state recovery ---
-STATE_FILE="production/session-state/active.md"
-if [ -f "$STATE_FILE" ]; then
+# --- Canonical handoff + active session state recovery ---
+HANDOFF_FILE="$ccgs_root/production/session-handoff.md"
+STATE_FILE="$ccgs_root/production/session-state/active.md"
+STATE_KIND="$(ccgs_active_state_kind "$STATE_FILE")"
+
+if [ -f "$HANDOFF_FILE" ]; then
+    echo ""
+    echo "=== CANONICAL HANDOFF DETECTED ==="
+    echo "Bounded preview of production/session-handoff.md:"
+    ccgs_preview_bounded "$HANDOFF_FILE" 60
+    echo "Run /resume-from-handoff to compile a fresh session worklist before selecting a lane."
+    echo "=== END CANONICAL HANDOFF PREVIEW ==="
+fi
+
+if [ "$STATE_KIND" = "substantive" ]; then
     echo ""
     echo "=== ACTIVE SESSION STATE DETECTED ==="
-    echo "A previous session left state at: $STATE_FILE"
-    echo "Read this file to recover context and continue where you left off."
+    echo "A previous session left state at: production/session-state/active.md"
+    echo "The canonical handoff above outranks this same-session cache when both exist."
     echo ""
-    echo "Quick summary (last 20 lines):"
-    tail -20 "$STATE_FILE" 2>/dev/null
-    TOTAL_LINES=$(wc -l < "$STATE_FILE" 2>/dev/null)
-    if [ "$TOTAL_LINES" -gt 20 ]; then
-        echo "  ... ($TOTAL_LINES total lines — read the full file to continue)"
-    fi
+    echo "Bounded active-state preview:"
+    ccgs_preview_bounded "$STATE_FILE" 60
     echo "=== END SESSION STATE PREVIEW ==="
+elif [ "$STATE_KIND" = "pointer" ]; then
+    echo ""
+    echo "=== POINTER-ONLY ACTIVE STATE DETECTED ==="
+    echo "production/session-state/active.md is not a substantive worklist; use the canonical handoff."
+    ccgs_preview_bounded "$STATE_FILE" 20
+    echo "=== END POINTER STATE PREVIEW ==="
 fi
 
 echo "==================================="

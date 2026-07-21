@@ -13,7 +13,7 @@
   <a href=".opencode/skills"><img src="https://img.shields.io/badge/skills-77-green" alt="77 Skills"></a>
   <a href=".opencode/commands"><img src="https://img.shields.io/badge/commands-77-yellow" alt="77 Commands"></a>
   <a href=".opencode/hooks"><img src="https://img.shields.io/badge/hooks-12-orange" alt="12 Hooks"></a>
-  <a href=".opencode/VERSION"><img src="https://img.shields.io/badge/version-0.5.2-blue" alt="v0.5.2"></a>
+  <a href=".opencode/VERSION"><img src="https://img.shields.io/badge/version-0.6.0-blue" alt="v0.6.0"></a>
   <a href="https://opencode.ai"><img src="https://img.shields.io/badge/built%20for-OpenCode-f5f5f5" alt="Built for OpenCode"></a>
 </p>
 
@@ -69,18 +69,30 @@ first brainstorm to launch.
 
 ## Current Status
 
-Package version: `0.5.2` (see [`.opencode/VERSION`](.opencode/VERSION)).
+Package version: `0.6.0` (see [`.opencode/VERSION`](.opencode/VERSION)).
 
 This release includes:
-- Hard `/resume-from-handoff` lane-selection boundary: focus arguments only bias
-  ranking, multiple lanes use the `question` tool for structured choice, single
-  lanes wait for numeric `1`, and follow-up forks remain separate decisions.
-  FIRST verification cannot be waived by lane choice, and entering a selected
-  workflow grants no additional mutation authority.
+- Bounded `/resume-from-handoff` with explicit `deep [focus]` mode: default
+  resume validates the derived resume index (`fresh`/`stale-hash`/`oversized`…),
+  reads at most the current 200-line/32-KiB slice section, applies explicit
+  source precedence with visible conflicts, records `## Source Freshness`,
+  and verifies the written cache by readback. The lane-selection boundary is
+  unchanged: focus arguments only bias ranking, multiple lanes use the
+  `question` tool, single lanes wait for numeric `1`, and FIRST verification
+  cannot be waived by lane choice.
 - `/handoff` mandatory two-round review gate with STANDARD/ADVERSARIAL tier
-  selection, pure-document exemptions, finding triage, conditional second
-  review, pass caps, and an auditable handoff record. The review stays inside
-  the active OpenCode session with no external egress.
+  selection, pure-document exemptions, finding triage, pass caps, and an
+  auditable handoff record — now paired with a fresh-context integrity
+  reviewer (one built-in `explore` spawn, fresh context, conclusion-free
+  bounded packet, before-and-after mutation snapshot) for mixed/executable
+  scope. Explicit `/handoff` invocation or an equally explicit commit-and-push
+  instruction is required; generic pause/stop wording only recommends it. A
+  pre-Phase-0 context-capacity gate and a session-baseline review-scope proof
+  make coverage deterministic. The review stays inside the active OpenCode
+  runtime with no external egress.
+- Tracked, derived `production/resume-index.md` (≤10 KB) refreshed by
+  `/handoff`; session-start and compaction hooks preview the canonical handoff
+  first and elevate it when `active.md` is missing or pointer-only.
 - Bug lifecycle consolidation: `/bug-report verify` with a VERIFIED FIXED
   verdict can complete verification, closure, stale triage cleanup, and derived
   session-state routing under one approved changeset instead of forcing separate
@@ -442,7 +454,7 @@ opencode.json                        # Permissions, plugin ref, instruction file
   uninstall.sh                       # Coexistence-aware uninstaller
   audit.sh                           # Validation dispatcher
   release.sh                         # Version management + GitHub releases
-  VERSION                            # Package version (0.5.2)
+  VERSION                            # Package version (0.6.0)
 design/                              # GDDs, narrative docs (AGENTS.md + registry/)
 docs/                                # Technical docs, ADRs, engine reference
 production/                          # Sprint plans, milestones, session state
@@ -507,11 +519,18 @@ Three skills manage session persistence, centered on the live worklist cache in
 `production/session-state/active.md`:
 
 - **`/handoff`** — creates a durable `production/session-handoff.md` before
-  pausing. Includes review gate, session state rotation, commit/push when
-  authorized, and a structured report.
+  pausing. Includes a two-round review gate with a fresh-context `explore`
+  integrity reviewer for mixed/executable scope, a context-capacity gate,
+  session-baseline scope proof, resume-index refresh, session state rotation,
+  commit/push when explicitly authorized, and a structured report. Generic
+  pause/stop wording only recommends `/handoff`; it is not commit or push
+  authority.
 - **`/resume-from-handoff`** — one-time session-entry compiler. Reads the
   handoff at session start, merges sprint and slice state, and writes a ranked
-  `## Session Worklist` plus `## Phase Guard` into `active.md`. Applies the
+  `## Session Worklist` plus `## Phase Guard` into `active.md`. Bounded by
+  default (current 200-line/32-KiB slice section plus resume-index freshness
+  checks); explicit `deep [focus]` reads full slice history. Records
+  `## Source Freshness` and verifies the cache by readback. Applies the
   vertical-slice forcing function. Explicit invocation authorizes that single
   write.
 - **`/studio-next`** — deprecated manual reference. Normal post-work routing now

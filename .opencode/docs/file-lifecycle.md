@@ -13,11 +13,16 @@ instructions compact and keep large rationale in docs.
 - Design, architecture, production, QA, and sprint artifacts that represent
   project decisions.
 - Review logs and handoffs when a skill explicitly asks for them.
+- `production/resume-index.md` when `/handoff` derives it from canonical state;
+  keep it compact, tracked, and disposable. The installer allowlists this path
+  for tracking but does not ship, own, or remove the project-created file.
 
 ## Ignore Or Keep Local
 
 - Temporary command output, raw logs, caches, generated build artifacts, and
   local editor files.
+- `production/session-logs/session-baseline.json`; the session-start hook
+  rewrites this local review-scope anchor for each session.
 - One-off transcripts unless converted into a concise project decision or
   handoff.
 - Legacy Claude runtime files as OpenCode dependencies. They may exist for
